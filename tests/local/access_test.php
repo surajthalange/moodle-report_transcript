@@ -99,6 +99,7 @@ final class access_test extends \advanced_testcase {
         $this->setUser($viewer);
         $this->assertTrue(access::can_view((int) $learner->id));
         $this->assertFalse(access::can_view((int) $other->id));
-        $this->assertSame(0, $DB->count_records('role_assignments', ['userid' => $viewer->id, 'contextid' => context_user::instance($other->id)->id]));
+        $othercontext = context_user::instance($other->id);
+        $this->assertSame(0, $DB->count_records('role_assignments', ['userid' => $viewer->id, 'contextid' => $othercontext->id]));
     }
 }

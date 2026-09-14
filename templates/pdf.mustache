@@ -19,6 +19,8 @@
 
     The PDF body, written through TCPDF's writeHTML(). TCPDF understands a narrow HTML
     subset, so this is table-only markup with inline widths: no classes, no flex, no grid.
+    Cell padding is set on the document by the renderer, because the cellpadding attribute
+    is obsolete HTML and TCPDF honours the current padding when it is absent.
     It shares data with report_transcript/transcript but deliberately nothing else.
 
     Text values marked "HTML" have been escaped and wrapped in font spans by the renderer;
@@ -54,7 +56,7 @@
 }}
 <h1 style="font-size: 20pt; font-weight: bold; margin: 0 0 10pt 0;">{{{title}}}</h1>
 
-<table cellpadding="3" style="width: 100%; font-size: 10pt;">
+<table style="width: 100%; font-size: 10pt;">
     <tr>
         <td style="width: 28%; color: #555555;">{{#str}} pdf:issuedto, report_transcript {{/str}}</td>
         <td style="width: 72%; font-weight: bold;">{{{fullname}}}</td>
@@ -72,7 +74,7 @@
 <div style="height: 10pt;"></div>
 
 {{#hasrows}}
-<table cellpadding="4" style="width: 100%; font-size: 9.5pt; border-collapse: collapse;">
+<table style="width: 100%; font-size: 9.5pt; border-collapse: collapse;">
     <thead>
         <tr style="background-color: #eeeeee; font-weight: bold;">
             <th style="width: {{coursewidth}}%; border-bottom: 0.6pt solid #888888;">{{#str}} col:course, report_transcript {{/str}}</th>
@@ -87,7 +89,7 @@
     <tbody>
         {{#rows}}
         <tr>
-            <td style="width: {{coursewidth}}%; border-bottom: 0.3pt solid #cccccc;">{{{coursename}}}<br /><span style="font-size: 8pt; color: #666666;">{{{shortname}}}</span></td>
+            <td style="width: {{coursewidth}}%; border-bottom: 0.3pt solid #cccccc;">{{{coursename}}}<br><span style="font-size: 8pt; color: #666666;">{{{shortname}}}</span></td>
             <td style="width: 17%; border-bottom: 0.3pt solid #cccccc;">{{started}}</td>
             <td style="width: 17%; border-bottom: 0.3pt solid #cccccc;">{{completed}}</td>
             <td style="width: 14%; text-align: right; border-bottom: 0.3pt solid #cccccc;">{{gradetext}}</td>

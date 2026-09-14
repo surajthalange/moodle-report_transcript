@@ -85,6 +85,8 @@ class pdf_renderer {
         $pdf->SetFooterMargin(0);
         $pdf->SetAutoPageBreak(true, 28);
         $pdf->SetFont(self::BASE_FONT, '', 10);
+        // Applies to every HTML table cell; the cellpadding attribute is obsolete HTML.
+        $pdf->setCellPaddings(1.2, 1.2, 1.2, 1.2);
         $pdf->AddPage();
 
         $context = $this->context($transcript, $issue, $learner, $code, $verifyurl);
