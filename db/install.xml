@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="report/transcript/db" VERSION="20260914" COMMENT="XMLDB file for Moodle report/transcript"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="report_transcript_issue" COMMENT="One row per issued transcript: the verification code and a snapshot of the rows exactly as they were issued.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The learner the transcript is about."/>
+        <FIELD NAME="issuerid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Who triggered the issue. Equals userid for a self-download; 0 once that user has been deleted."/>
+        <FIELD NAME="code" TYPE="char" LENGTH="24" NOTNULL="true" SEQUENCE="false" COMMENT="Verification code, unique, from an unambiguous upper-case alphabet."/>
+        <FIELD NAME="documenttitle" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="The document title setting at issue time."/>
+        <FIELD NAME="snapshot" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="JSON: the rows as rendered plus the settings that shaped them."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="code" UNIQUE="true" FIELDS="code"/>
+        <INDEX NAME="issuerid" UNIQUE="false" FIELDS="issuerid"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>
