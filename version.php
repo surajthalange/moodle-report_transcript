@@ -25,8 +25,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'report_transcript';
-$plugin->version = 2026091400;
-$plugin->release = '0.1.0';
+$plugin->version = 2026091401;
+$plugin->release = '1.0.0';
 $plugin->requires = 2024100700; // Moodle 4.5 LTS, the supported floor.
 $plugin->supported = [405, 502];
-$plugin->maturity = MATURITY_ALPHA;
+$plugin->maturity = MATURITY_STABLE;
