@@ -164,3 +164,26 @@
         border-color: CanvasText;
     }
 }
+
+/* Verify page: the code field and button on one line where there is room. */
+.report-transcript-verifyform {
+    max-width: 40rem;
+    margin-bottom: 1.5rem;
+}
+
+.report-transcript-verifyfields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.report-transcript-verifyfields .form-control {
+    flex: 1 1 18rem;
+    font-family: var(--bs-font-monospace, monospace);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.report-transcript-verifyresult {
+    margin-top: 1rem;
+}

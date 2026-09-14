@@ -1,0 +1,88 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template report_transcript/verify
+
+    The public verification page: a code form, then the result.
+
+    Context variables required for this template:
+    * formurl - where the form submits
+    * code - the code as typed, echoed back into the field
+    * searched - whether a lookup was attempted
+    * limited - whether the lookup was refused by the rate limit
+    * found - whether the code matched
+    * foundtext - "This transcript was issued on ... to ..."
+    * transcript - the export of report_transcript/transcript, when found
+
+    Example context (json):
+    {
+        "formurl": "https://example.com/report/transcript/verify.php",
+        "code": "ABCD EFGH JKLM NPQR STUV WXYZ",
+        "searched": true,
+        "limited": false,
+        "found": true,
+        "foundtext": "This transcript was issued on 14 September 2026 to Asha Rao.",
+        "transcript": {
+            "title": "Academic transcript",
+            "fullname": "Asha Rao",
+            "showname": false,
+            "isother": false,
+            "summary": "1 completed",
+            "hasrows": true,
+            "rows": [
+                {"coursename": "Biology 101", "shortname": "BIO101", "started": "3 March 2026",
+                 "completed": "28 June 2026", "gradetext": "82.00", "outcome": "Pass", "outcomekey": "pass", "withheld": false}
+            ],
+            "showoutcome": true,
+            "hasissues": false,
+            "issues": []
+        }
+    }
+}}
+<div class="report-transcript report-transcript-verify">
+    <p>{{#str}} verify:intro, report_transcript {{/str}}</p>
+
+    <form method="get" action="{{formurl}}" class="report-transcript-verifyform">
+        <label for="report-transcript-code" class="form-label">{{#str}} verify:code, report_transcript {{/str}}</label>
+        <div class="report-transcript-verifyfields">
+            <input type="text" id="report-transcript-code" name="code" class="form-control" value="{{code}}"
+                   autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40" required>
+            <button type="submit" class="btn btn-primary">{{#str}} verify:submit, report_transcript {{/str}}</button>
+        </div>
+    </form>
+
+    {{#searched}}
+        <div class="report-transcript-verifyresult" role="status" aria-live="polite">
+            {{#limited}}
+                <div class="alert alert-warning">{{#str}} verify:ratelimited, report_transcript {{/str}}</div>
+            {{/limited}}
+            {{^limited}}
+                {{#found}}
+                    <div class="alert alert-success">{{foundtext}}</div>
+                    <p class="text-muted small">{{#str}} verify:asissued, report_transcript {{/str}}</p>
+                    {{#transcript}}
+                        <h2 class="h4">{{title}}</h2>
+                        {{> report_transcript/transcript }}
+                    {{/transcript}}
+                {{/found}}
+                {{^found}}
+                    <div class="alert alert-secondary">{{#str}} verify:notfound, report_transcript {{/str}}</div>
+                {{/found}}
+            {{/limited}}
+        </div>
+    {{/searched}}
+</div>
