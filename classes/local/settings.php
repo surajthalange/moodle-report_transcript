@@ -73,7 +73,8 @@ class settings {
 
         $institution = trim((string) ($config->institutionname ?? ''));
         if ($institution === '') {
-            $institution = format_string($SITE->fullname);
+            // Explicit context: this runs before any page has set one.
+            $institution = format_string($SITE->fullname, true, ['context' => \context_system::instance()]);
         }
 
         $excluded = array_filter(array_map('intval', explode(',', (string) ($config->excludedcategories ?? ''))));

@@ -1,0 +1,119 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template report_transcript/transcript
+
+    A learner's transcript: the summary line, the table of courses, and the download.
+
+    Context variables required for this template:
+    * title - the document title
+    * fullname - the learner's name
+    * showname - whether to print it; off when the page header already does
+    * isother - whether the viewer is not the learner
+    * summary - one line, e.g. "7 completed, 2 in progress"
+    * hasrows - whether there is anything to list
+    * rows - array of {coursename, shortname, started, completed, gradetext, outcome, outcomekey, withheld}
+    * showoutcome - whether the outcome column exists
+    * downloadurl - the PDF url, or absent on the verify page
+    * hasissues, issues - previously issued codes as {code, issued}
+
+    Example context (json):
+    {
+        "title": "Academic transcript",
+        "fullname": "Asha Rao",
+        "showname": true,
+        "isother": false,
+        "summary": "2 completed, 1 in progress",
+        "hasrows": true,
+        "rows": [
+            {"coursename": "Biology 101", "shortname": "BIO101", "started": "3 March 2026",
+             "completed": "28 June 2026", "gradetext": "82.00", "outcome": "Pass", "outcomekey": "pass", "withheld": false}
+        ],
+        "showoutcome": true,
+        "downloadurl": "https://example.com/report/transcript/pdf.php?userid=3",
+        "hasissues": true,
+        "issues": [{"code": "ABCD EFGH JKLM NPQR STUV WXYZ", "issued": "Issued 1 July 2026"}]
+    }
+}}
+<div class="report-transcript">
+    {{#showname}}
+        <p class="report-transcript-name h4">{{fullname}}</p>
+    {{/showname}}
+
+    {{#isother}}
+        <div class="alert alert-info" role="status">{{#str}} viewingasmanager, report_transcript {{/str}}</div>
+    {{/isother}}
+
+    <p class="report-transcript-summary text-muted">{{summary}}</p>
+
+    {{#hasrows}}
+        <div class="report-transcript-tablewrap">
+            <table class="table report-transcript-table">
+                <thead>
+                    <tr>
+                        <th scope="col">{{#str}} col:course, report_transcript {{/str}}</th>
+                        <th scope="col">{{#str}} col:started, report_transcript {{/str}}</th>
+                        <th scope="col">{{#str}} col:completed, report_transcript {{/str}}</th>
+                        <th scope="col" class="report-transcript-num">{{#str}} col:grade, report_transcript {{/str}}</th>
+                        {{#showoutcome}}
+                            <th scope="col">{{#str}} col:outcome, report_transcript {{/str}}</th>
+                        {{/showoutcome}}
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#rows}}
+                        <tr class="report-transcript-row report-transcript-row--{{outcomekey}}">
+                            <th scope="row" data-label="{{#str}} col:course, report_transcript {{/str}}">
+                                <span class="report-transcript-course">{{coursename}}</span>
+                                <span class="report-transcript-shortname text-muted">{{shortname}}</span>
+                            </th>
+                            <td data-label="{{#str}} col:started, report_transcript {{/str}}">{{started}}</td>
+                            <td data-label="{{#str}} col:completed, report_transcript {{/str}}">{{completed}}</td>
+                            <td data-label="{{#str}} col:grade, report_transcript {{/str}}" class="report-transcript-num">{{gradetext}}</td>
+                            {{#showoutcome}}
+                                <td data-label="{{#str}} col:outcome, report_transcript {{/str}}">
+                                    <span class="report-transcript-outcome report-transcript-outcome--{{outcomekey}}">{{outcome}}</span>
+                                </td>
+                            {{/showoutcome}}
+                        </tr>
+                    {{/rows}}
+                </tbody>
+            </table>
+        </div>
+    {{/hasrows}}
+
+    {{#downloadurl}}
+        <div class="report-transcript-actions">
+            <a href="{{downloadurl}}" class="btn btn-primary">{{#str}} download, report_transcript {{/str}}</a>
+            <p class="report-transcript-note text-muted small">{{#str}} downloadnote, report_transcript {{/str}}</p>
+        </div>
+    {{/downloadurl}}
+
+    {{#hasissues}}
+        <section class="report-transcript-issues">
+            <h2 class="h5">{{#str}} issuedcodes, report_transcript {{/str}}</h2>
+            <ul class="list-unstyled">
+                {{#issues}}
+                    <li>
+                        <code class="report-transcript-code">{{code}}</code>
+                        <span class="text-muted small">{{issued}}</span>
+                    </li>
+                {{/issues}}
+            </ul>
+        </section>
+    {{/hasissues}}
+</div>

@@ -22,8 +22,12 @@
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use report_transcript\event\transcript_viewed;
 use report_transcript\local\access;
+use report_transcript\local\issuer;
 use report_transcript\local\settings;
+use report_transcript\local\transcript_builder;
+use report_transcript\output\transcript_page;
 
 require(__DIR__ . '/../../config.php');
 
@@ -40,13 +44,36 @@ core_user::require_active_user($user);
 
 $settings = settings::from_config();
 $context = context_user::instance($userid);
+$isother = access::is_viewing_other($userid);
 
 $PAGE->set_url(new moodle_url('/report/transcript/index.php', ['userid' => $userid]));
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('report');
 $PAGE->set_title($settings->documenttitle);
-$PAGE->set_heading(get_string('transcriptfor', 'report_transcript', fullname($user)));
+$PAGE->set_heading(fullname($user));
+if ($isother) {
+    $PAGE->navbar->add(fullname($user), new moodle_url('/user/profile.php', ['id' => $userid]));
+}
+$PAGE->navbar->add(get_string('navigationlink', 'report_transcript'));
+
+$transcript = (new transcript_builder($settings))->build($user);
+
+transcript_viewed::create([
+    'context' => $context,
+    'relateduserid' => $userid,
+])->trigger();
+
+$page = new transcript_page(
+    $transcript,
+    $settings,
+    $isother,
+    new moodle_url('/report/transcript/pdf.php', ['userid' => $userid]),
+    (new issuer())->issued_for($userid),
+    null,
+    false, // The page header already carries the learner's name.
+);
 
 echo $OUTPUT->header();
 echo $OUTPUT->heading($settings->documenttitle);
+echo $OUTPUT->render_from_template('report_transcript/transcript', $page->export_for_template($OUTPUT));
 echo $OUTPUT->footer();
