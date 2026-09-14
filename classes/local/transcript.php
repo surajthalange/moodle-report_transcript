@@ -41,11 +41,17 @@ final class transcript {
      * @param string $documenttitle the title that applies to this transcript
      */
     public function __construct(
+        /** @var int The learner's id */
         public readonly int $userid,
+        /** @var string The learner's name as it should print */
         public readonly string $fullname,
+        /** @var string The learner's username, for file names */
         public readonly string $username,
+        /** @var array In display order */
         public readonly array $rows,
+        /** @var int When the rows were computed */
         public readonly int $timegenerated,
+        /** @var string The title that applies to this transcript */
         public readonly string $documenttitle,
     ) {
     }

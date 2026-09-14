@@ -31,7 +31,8 @@ use report_transcript\local\rate_limiter;
 use report_transcript\local\settings;
 use report_transcript\output\transcript_page;
 
-require(__DIR__ . '/../../config.php');
+// Public by design; see the file comment.
+require(__DIR__ . '/../../config.php'); // phpcs:ignore moodle.Files.RequireLogin.Missing
 
 $code = optional_param('code', '', PARAM_RAW_TRIMMED);
 

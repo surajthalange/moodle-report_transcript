@@ -101,7 +101,8 @@ class issuer {
      */
     public function issued_for(int $userid): array {
         global $DB;
-        return array_values($DB->get_records(self::TABLE, ['userid' => $userid], 'timecreated DESC', 'id, code, timecreated, issuerid'));
+        $records = $DB->get_records(self::TABLE, ['userid' => $userid], 'timecreated DESC', 'id, code, timecreated, issuerid');
+        return array_values($records);
     }
 
     /**

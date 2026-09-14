@@ -45,13 +45,21 @@ class settings {
      * @param string $footertext PDF footer with {code}, {verifyurl} and {institution} placeholders
      */
     public function __construct(
+        /** @var string Heading and PDF title */
         public readonly string $documenttitle,
+        /** @var string PDF header; empty means the site name */
         public readonly string $institutionname,
+        /** @var bool List active, uncompleted, completion-tracked enrolments */
         public readonly bool $includeinprogress,
+        /** @var bool List active enrolments in courses without completion tracking */
         public readonly bool $includeuntracked,
+        /** @var array Category ids whose courses (and subcategories) never appear */
         public readonly array $excludedcategories,
+        /** @var int GRADEDISPLAY_COURSE or a GRADE_DISPLAY_TYPE_* constant */
         public readonly int $gradedisplay,
+        /** @var bool Whether the outcome column exists at all */
         public readonly bool $showoutcome,
+        /** @var string PDF footer with {code}, {verifyurl} and {institution} placeholders */
         public readonly string $footertext,
     ) {
     }

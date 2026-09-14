@@ -50,7 +50,7 @@ final class transcript_builder_test extends \advanced_testcase {
         parent::setUp();
         $this->resetAfterTest();
         $this->user = $this->getDataGenerator()->create_user(['firstname' => 'Asha', 'lastname' => 'Rao']);
-        // mark_complete() notifies the learner; keep that out of the output.
+        // Marking a course complete notifies the learner; keep that out of the output.
         $this->redirectMessages();
     }
 
@@ -252,10 +252,10 @@ final class transcript_builder_test extends \advanced_testcase {
         $generator->enrol_user($this->user->id, $enrolonly->id, 'student', 'manual', 1650000000);
         $cc = new completion_completion(['course' => $enrolonly->id, 'userid' => $this->user->id]);
         $cc->mark_complete(1700000000);
-        // mark_complete() records timeenrolled itself; clear it to isolate the fallback.
+        // Completing records timeenrolled itself; clear it to isolate the fallback.
         $this->clear_completion_times($enrolonly, ['timeenrolled' => 0, 'timestarted' => 0]);
 
-        // timeenrolled known, timestarted not.
+        // Enrolment time known, start time not.
         $enrolled = $this->course();
         $generator->enrol_user($this->user->id, $enrolled->id, 'student');
         $cc = new completion_completion(['course' => $enrolled->id, 'userid' => $this->user->id]);
@@ -263,7 +263,7 @@ final class transcript_builder_test extends \advanced_testcase {
         $cc->mark_complete(1700000001);
         $this->clear_completion_times($enrolled, ['timestarted' => 0]);
 
-        // timestarted known and wins.
+        // Start time known, and it wins.
         $started = $this->course();
         $this->complete($started, 1700000002, 'student', 1670000000);
 

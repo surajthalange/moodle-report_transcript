@@ -56,7 +56,8 @@
     white-space: nowrap;
 }
 
-/* The outcome is always the word; the colour only underlines it. */
+/* The outcome is always the word; the colour only underlines it. The border uses
+   currentcolor, which forced-colours mode maps to the system text colour on its own. */
 .report-transcript-outcome {
     display: inline-block;
     padding: 0.125rem 0.5rem;
@@ -156,12 +157,6 @@
 
     .report-transcript-num {
         text-align: end;
-    }
-}
-
-@media (forced-colors: active) {
-    .report-transcript-outcome {
-        border-color: CanvasText;
     }
 }
 

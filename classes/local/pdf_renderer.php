@@ -46,8 +46,11 @@ class pdf_renderer {
      * @param bool $compress off in tests so that the metadata can be asserted on
      */
     public function __construct(
+        /** @var settings The settings that shape the document */
         private readonly settings $settings,
+        /** @var renderer_base For the template */
         private readonly renderer_base $output,
+        /** @var bool Off in tests so that the metadata can be asserted on */
         private readonly bool $compress = true,
     ) {
     }
@@ -84,7 +87,8 @@ class pdf_renderer {
         $pdf->SetFont(self::BASE_FONT, '', 10);
         $pdf->AddPage();
 
-        $html = $this->output->render_from_template('report_transcript/pdf', $this->context($transcript, $issue, $learner, $code, $verifyurl));
+        $context = $this->context($transcript, $issue, $learner, $code, $verifyurl);
+        $html = $this->output->render_from_template('report_transcript/pdf', $context);
         $pdf->writeHTML($html, true, false, true, false, '');
 
         return $pdf->Output('', 'S');
@@ -139,7 +143,8 @@ class pdf_renderer {
      */
     private function logo_bytes(): ?string {
         $fs = get_file_storage();
-        $files = $fs->get_area_files(context_system::instance()->id, 'report_transcript', 'institutionlogo', 0, 'itemid, filepath, filename', false);
+        $contextid = context_system::instance()->id;
+        $files = $fs->get_area_files($contextid, 'report_transcript', 'institutionlogo', 0, 'itemid, filepath, filename', false);
         $file = reset($files);
         return $file ? $file->get_content() : null;
     }

@@ -36,12 +36,19 @@ final class transcript_row {
      * @param grade_presentation $grade
      */
     public function __construct(
+        /** @var int The course id */
         public readonly int $courseid,
+        /** @var string The formatted full name */
         public readonly string $coursename,
+        /** @var string The course short name */
         public readonly string $shortname,
+        /** @var string A grade_presenter::STATUS_* constant */
         public readonly string $status,
+        /** @var int Never 0 for a row that appears; see transcript_builder */
         public readonly int $timestarted,
+        /** @var ?int Null unless completed */
         public readonly ?int $timecompleted,
+        /** @var grade_presentation How the grade and outcome show */
         public readonly grade_presentation $grade,
     ) {
     }

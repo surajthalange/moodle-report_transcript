@@ -156,7 +156,9 @@ final class provider_test extends provider_testcase {
         $learnerctx = context_user::instance($this->learner->id);
         $otherctx = context_user::instance($this->other->id);
 
-        provider::delete_data_for_user(new approved_contextlist($this->manager, 'report_transcript', [$learnerctx->id, $otherctx->id]));
+        provider::delete_data_for_user(
+            new approved_contextlist($this->manager, 'report_transcript', [$learnerctx->id, $otherctx->id])
+        );
         $this->assertSame(2, $DB->count_records(issuer::TABLE, ['userid' => $this->learner->id]), 'Learner records kept');
         $this->assertSame(1, $DB->count_records(issuer::TABLE, ['userid' => $this->other->id]));
         $this->assertSame(0, $DB->count_records(issuer::TABLE, ['issuerid' => $this->manager->id]), 'Manager no longer named');

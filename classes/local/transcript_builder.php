@@ -56,6 +56,7 @@ class transcript_builder {
      * @param settings $settings
      */
     public function __construct(
+        /** @var settings The settings that shape the rows */
         private readonly settings $settings
     ) {
     }
@@ -114,7 +115,13 @@ class transcript_builder {
 
             $item = grade_item::fetch_course_item($courseid);
             $resolved = (new course_total($courseid, $user))->resolve($item);
-            $grade = grade_presenter::present($item, $resolved['finalgrade'], $resolved['withheld'], $status, $this->settings);
+            $grade = grade_presenter::present(
+                $item,
+                $resolved['finalgrade'],
+                $resolved['withheld'],
+                $status,
+                $this->settings
+            );
 
             $rows[] = new transcript_row(
                 $courseid,
@@ -156,10 +163,11 @@ class transcript_builder {
         if ($rank[$a->status] !== $rank[$b->status]) {
             return $rank[$a->status] <=> $rank[$b->status];
         }
+        $byname = strcoll($a->coursename, $b->coursename);
         return match ($a->status) {
-            grade_presenter::STATUS_COMPLETED => ($b->timecompleted <=> $a->timecompleted) ?: strcoll($a->coursename, $b->coursename),
-            grade_presenter::STATUS_INPROGRESS => ($b->timestarted <=> $a->timestarted) ?: strcoll($a->coursename, $b->coursename),
-            default => strcoll($a->coursename, $b->coursename),
+            grade_presenter::STATUS_COMPLETED => ($b->timecompleted <=> $a->timecompleted) ?: $byname,
+            grade_presenter::STATUS_INPROGRESS => ($b->timestarted <=> $a->timestarted) ?: $byname,
+            default => $byname,
         };
     }
 

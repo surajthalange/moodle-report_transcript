@@ -46,7 +46,6 @@ class provider implements
     \core_privacy\local\metadata\provider,
     \core_privacy\local\request\core_userlist_provider,
     \core_privacy\local\request\plugin\provider {
-
     /**
      * Metadata.
      *
@@ -95,7 +94,11 @@ class provider implements
         }
         $params = ['learner' => $context->instanceid];
         $userlist->add_from_sql('userid', "SELECT userid FROM {report_transcript_issue} WHERE userid = :learner", $params);
-        $userlist->add_from_sql('issuerid', "SELECT issuerid FROM {report_transcript_issue} WHERE userid = :learner AND issuerid > 0", $params);
+        $userlist->add_from_sql(
+            'issuerid',
+            "SELECT issuerid FROM {report_transcript_issue} WHERE userid = :learner AND issuerid > 0",
+            $params
+        );
     }
 
     /**

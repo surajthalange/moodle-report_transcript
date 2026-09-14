@@ -48,12 +48,19 @@ class transcript_page implements renderable, templatable {
      * @param bool $showname print the learner's name in the body; off when the page header has it
      */
     public function __construct(
+        /** @var transcript The transcript to show */
         private readonly transcript $transcript,
+        /** @var settings The settings that shaped it */
         private readonly settings $settings,
+        /** @var bool The viewer is not the learner */
         private readonly bool $isother,
+        /** @var ?moodle_url Null on the verify page, where there is no download */
         private readonly ?moodle_url $downloadurl,
+        /** @var array Previously issued codes, newest first */
         private readonly array $issues = [],
+        /** @var ?int Whose timezone dates render in; null for the viewer */
         private readonly ?int $timezoneuserid = null,
+        /** @var bool Print the learner's name in the body */
         private readonly bool $showname = true,
     ) {
     }
@@ -74,7 +81,8 @@ class transcript_page implements renderable, templatable {
         if ($t->is_empty()) {
             $summary = get_string('summaryempty', 'report_transcript');
         } else if ($inprogress > 0) {
-            $summary = get_string('summary', 'report_transcript', (object) ['completed' => $completed, 'inprogress' => $inprogress]);
+            $counts = (object) ['completed' => $completed, 'inprogress' => $inprogress];
+            $summary = get_string('summary', 'report_transcript', $counts);
         } else {
             $summary = get_string('summarycompletedonly', 'report_transcript', $completed);
         }

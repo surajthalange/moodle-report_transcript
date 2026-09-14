@@ -39,11 +39,17 @@ final class grade_presentation {
      * @param int $displaytype the GRADE_DISPLAY_TYPE_* that produced $gradetext
      */
     public function __construct(
+        /** @var string The grade as displayed, or the "not available" dash */
         public readonly string $gradetext,
+        /** @var string An outcome::* constant */
         public readonly string $outcome,
+        /** @var bool True when the gradebook is withholding the grade */
         public readonly bool $hidden,
+        /** @var ?float The raw final grade; null when absent or withheld */
         public readonly ?float $finalgrade,
+        /** @var float The course's grade to pass; 0 when none is defined */
         public readonly float $gradepass,
+        /** @var int The GRADE_DISPLAY_TYPE_* that produced $gradetext */
         public readonly int $displaytype,
     ) {
     }

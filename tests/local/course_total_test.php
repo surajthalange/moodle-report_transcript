@@ -81,25 +81,9 @@ final class course_total_test extends \advanced_testcase {
     /**
      * Resolve the learner's course total.
      *
-     * Core's blank_hidden_total_and_adjust_bounds() caches its hiding analysis in
-     * function-level statics keyed on user id and course id. Within one PHPUnit process the
-     * database is reset between tests but ids repeat, so a later test can inherit an earlier
-     * test's analysis. Resolving a fresh throwaway course for the same user first changes the
-     * key and forces the reload. A real request never hits this: it is one process per request.
-     *
      * @return array{finalgrade: ?float, withheld: bool}
      */
     private function resolve(): array {
-        // The decoy must carry a grade, or resolve() returns before reaching the static.
-        $decoy = $this->getDataGenerator()->create_course();
-        $decoyitem = grade_item::fetch_course_item($decoy->id);
-        $decoygrade = new grade_grade(['itemid' => $decoyitem->id, 'userid' => $this->user->id], false);
-        $decoygrade->finalgrade = 1;
-        $decoygrade->rawgrade = 1;
-        $decoygrade->overridden = time();
-        $decoygrade->insert();
-        (new course_total((int) $decoy->id, $this->user))->resolve($decoyitem);
-
         return (new course_total((int) $this->course->id, $this->user))->resolve($this->item());
     }
 
@@ -114,6 +98,21 @@ final class course_total_test extends \advanced_testcase {
     private function set_overview_setting(int $value): void {
         set_config('grade_report_overview_showtotalsifcontainhidden', $value);
         grade_get_setting($this->course->id, null, null, true);
+    }
+
+    /**
+     * Two manual items worth 100 each, 80 on the visible one and 60 on the hidden one, so
+     * the natural-sum course total is 140 but the learner may only see 80.
+     */
+    private function hidden_item_scenario(): void {
+        $generator = $this->getDataGenerator();
+        $visible = $generator->create_grade_item(['courseid' => $this->course->id, 'grademax' => 100]);
+        $hidden = $generator->create_grade_item(['courseid' => $this->course->id, 'grademax' => 100]);
+        grade_item::fetch(['id' => $visible->id])->update_final_grade($this->user->id, 80, 'test');
+        $hiddenitem = grade_item::fetch(['id' => $hidden->id]);
+        $hiddenitem->update_final_grade($this->user->id, 60, 'test');
+        $hiddenitem->set_hidden(1);
+        grade_regrade_final_grades($this->course->id);
     }
 
     /**
@@ -169,22 +168,18 @@ final class course_total_test extends \advanced_testcase {
      * "show totals if they contain hidden items" setting: hide, adjust, or show real.
      */
     public function test_total_containing_a_hidden_item_follows_the_overview_setting(): void {
-        $generator = $this->getDataGenerator();
-        $visible = $generator->create_grade_item(['courseid' => $this->course->id, 'grademax' => 100]);
-        $hidden = $generator->create_grade_item(['courseid' => $this->course->id, 'grademax' => 100]);
-        grade_item::fetch(['id' => $visible->id])->update_final_grade($this->user->id, 80, 'test');
-        $hiddenitem = grade_item::fetch(['id' => $hidden->id]);
-        $hiddenitem->update_final_grade($this->user->id, 60, 'test');
-        $hiddenitem->set_hidden(1);
-        grade_regrade_final_grades($this->course->id);
+        $this->hidden_item_scenario();
 
         // Sanity: the real total is the natural sum of both items.
         $real = grade_grade::fetch(['itemid' => $this->item()->id, 'userid' => $this->user->id]);
         $this->assertEquals(140.0, (float) $real->finalgrade);
 
         $this->set_overview_setting(GRADE_REPORT_HIDE_TOTAL_IF_CONTAINS_HIDDEN);
-        $this->assertSame(['finalgrade' => null, 'withheld' => true], $this->resolve(),
-            'Hide: the learner cannot see the total, so neither can the transcript');
+        $this->assertSame(
+            ['finalgrade' => null, 'withheld' => true],
+            $this->resolve(),
+            'Hide: the learner cannot see the total, so neither can the transcript'
+        );
 
         $this->set_overview_setting(GRADE_REPORT_SHOW_TOTAL_IF_CONTAINS_HIDDEN);
         $adjusted = $this->resolve();
@@ -192,28 +187,23 @@ final class course_total_test extends \advanced_testcase {
         $this->assertEquals(80.0, $adjusted['finalgrade'], 'Adjusted: the hidden item is left out of the total');
 
         $this->set_overview_setting(GRADE_REPORT_SHOW_REAL_TOTAL_IF_CONTAINS_HIDDEN);
-        $this->assertSame(['finalgrade' => 140.0, 'withheld' => false], $this->resolve(),
-            'Show real: the learner sees the true total, so the transcript may too');
+        $this->assertSame(
+            ['finalgrade' => 140.0, 'withheld' => false],
+            $this->resolve(),
+            'Show real: the learner sees the true total, so the transcript may too'
+        );
     }
 
     /**
      * Adjusting the total also adjusts the grade item's bounds, so a percentage stays honest.
      */
     public function test_adjusted_total_adjusts_the_bounds(): void {
-        $generator = $this->getDataGenerator();
-        $visible = $generator->create_grade_item(['courseid' => $this->course->id, 'grademax' => 100]);
-        $hidden = $generator->create_grade_item(['courseid' => $this->course->id, 'grademax' => 100]);
-        grade_item::fetch(['id' => $visible->id])->update_final_grade($this->user->id, 80, 'test');
-        $hiddenitem = grade_item::fetch(['id' => $hidden->id]);
-        $hiddenitem->update_final_grade($this->user->id, 60, 'test');
-        $hiddenitem->set_hidden(1);
-        grade_regrade_final_grades($this->course->id);
+        $this->hidden_item_scenario();
         $this->set_overview_setting(GRADE_REPORT_SHOW_TOTAL_IF_CONTAINS_HIDDEN);
 
         $item = $this->item();
         $this->assertEquals(200.0, (float) $item->grademax, 'Natural aggregation: max is the sum of both items');
 
-        $this->resolve();
         (new course_total((int) $this->course->id, $this->user))->resolve($item);
 
         $this->assertEquals(100.0, (float) $item->grademax, 'With the hidden item left out, the max shrinks with it');
