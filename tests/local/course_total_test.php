@@ -115,6 +115,42 @@ final class course_total_test extends \advanced_testcase {
         grade_regrade_final_grades($this->course->id);
     }
 
+
+    /**
+     * A course with its gradebook switched off shows the learner nothing, so the
+     * transcript must withhold the total rather than print it, embed it in the PDF and
+     * make it verifiable. Reported in review as MMR-244.
+     */
+    public function test_gradebook_switched_off_withholds_the_total(): void {
+        $this->override_total(72.5);
+        $this->assertSame(['finalgrade' => 72.5, 'withheld' => false], $this->resolve());
+
+        // What a teacher does before results are released.
+        $this->course->showgrades = 0;
+        update_course($this->course);
+
+        $this->assertSame(['finalgrade' => null, 'withheld' => true], $this->resolve());
+    }
+
+    /**
+     * The same when the capability rather than the course setting is what stops them.
+     */
+    public function test_learner_without_grade_view_gets_nothing(): void {
+        $this->override_total(72.5);
+        $this->assertSame(['finalgrade' => 72.5, 'withheld' => false], $this->resolve());
+
+        $studentrole = $this->getDataGenerator()->create_role();
+        role_change_permission(
+            $studentrole,
+            \context_course::instance($this->course->id),
+            'moodle/grade:view',
+            CAP_PROHIBIT
+        );
+        role_assign($studentrole, $this->user->id, \context_course::instance($this->course->id));
+
+        $this->assertSame(['finalgrade' => null, 'withheld' => true], $this->resolve());
+    }
+
     /**
      * No grade at all is not withheld; there is simply nothing to show.
      */

@@ -16,6 +16,7 @@
 
 namespace report_transcript\local;
 
+use context_course;
 use grade_grade;
 use grade_item;
 use stdClass;
@@ -68,6 +69,28 @@ class course_total {
     }
 
     /**
+     * Whether this course shows the learner a gradebook of their own.
+     *
+     * Both halves of core's own test in grade_report_overview::setup_courses_data(): the
+     * course setting, and the capability. The capability is checked for the learner rather
+     * than for whoever is reading the transcript, because the question the transcript has
+     * to answer is what the learner could see, not what the reader may see.
+     *
+     * @return bool
+     */
+    private function gradebook_is_open_to_learner(): bool {
+        $course = get_course($this->courseid);
+        if (empty($course->showgrades)) {
+            return false;
+        }
+        return has_capability(
+            'moodle/grade:view',
+            context_course::instance($this->courseid),
+            $this->user->id
+        );
+    }
+
+    /**
      * The learner's course total, with the hidden-item rule applied.
      *
      * @param grade_item $item the course grade item; its grademin and grademax are adjusted
@@ -76,6 +99,15 @@ class course_total {
      *      gradebook is withholding it
      */
     public function resolve(grade_item $item): array {
+        // Before any of the hidden-item reasoning: can this learner see a gradebook here at
+        // all? A course can have grades switched off entirely, and the capability to read
+        // them can be taken away from the learner's role. Either way the total is not
+        // something they could see for themselves, so it must not reach the page, the PDF
+        // or the verification page, which is readable without signing in.
+        if (!$this->gradebook_is_open_to_learner()) {
+            return ['finalgrade' => null, 'withheld' => true];
+        }
+
         $grade = grade_grade::fetch(['itemid' => $item->id, 'userid' => $this->user->id]);
         if (!$grade || $grade->finalgrade === null) {
             return ['finalgrade' => null, 'withheld' => false];

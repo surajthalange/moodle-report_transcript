@@ -173,6 +173,18 @@ final class transcript_builder_test extends \advanced_testcase {
     }
 
     /**
+     * A hidden course without completion tracking is not listed either. The untracked rule
+     * reads enrol_get_all_users_courses(), which does not filter hidden courses, so this
+     * had to be checked separately from the in-progress rule. Reported in review as MMR-244.
+     */
+    public function test_untracked_hidden_course_is_excluded(): void {
+        $course = $this->course(['enablecompletion' => 0, 'visible' => 0]);
+        $this->getDataGenerator()->enrol_user($this->user->id, $course->id, 'student');
+
+        $this->assertSame([], $this->ids($this->build(['includeuntracked' => true])));
+    }
+
+    /**
      * A suspended enrolment with no completion is not listed.
      */
     public function test_suspended_enrolment_is_excluded(): void {

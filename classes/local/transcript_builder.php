@@ -90,8 +90,14 @@ class transcript_builder {
                 if (isset($candidates[$courseid])) {
                     continue;
                 }
+                // Hidden courses come back from enrol_get_all_users_courses() as well, so
+                // both branches have to ask. Without this the untracked rule listed a hidden
+                // course, and its total, on a transcript the learner could not have seen.
+                if (!$this->learner_can_see_course($course, $userid)) {
+                    continue;
+                }
                 if ($course->enablecompletion) {
-                    if ($this->settings->includeinprogress && $course->visible) {
+                    if ($this->settings->includeinprogress) {
                         $candidates[$courseid] = [$course, grade_presenter::STATUS_INPROGRESS];
                     }
                 } else if ($this->settings->includeuntracked) {
@@ -192,6 +198,28 @@ class transcript_builder {
             return $enrolmentstart;
         }
         return $cc ? (int) $cc->timecompleted : 0;
+    }
+
+    /**
+     * Whether a hidden course should still appear on this learner's transcript.
+     *
+     * The same test core's overview report makes: visible, or the learner holds the
+     * capability to see hidden courses. Asked of the learner rather than of the reader,
+     * because the transcript is a record of what they could see.
+     *
+     * @param stdClass $course
+     * @param int $userid the learner
+     * @return bool
+     */
+    private function learner_can_see_course(stdClass $course, int $userid): bool {
+        if ($course->visible) {
+            return true;
+        }
+        return has_capability(
+            'moodle/course:viewhiddencourses',
+            context_course::instance((int) $course->id),
+            $userid
+        );
     }
 
     /**
