@@ -1,5 +1,23 @@
 # Changes
 
+## 1.0.1 (2026-10-03)
+
+Both findings from the Marketplace review of 1.0.0 (MMR-244).
+
+- A course total is now withheld when the course has grades switched off for learners
+  (showgrades) or the learner does not hold moodle/grade:view in the course. Before this a
+  teacher who had turned the gradebook off, for example before results were released, still
+  had the total printed on the page, embedded in the PDF and made verifiable on the public
+  verification page. Both halves of core's own test in
+  grade_report_overview::setup_courses_data(), asked of the learner rather than of whoever
+  is reading the transcript.
+- Courses without completion tracking are now checked for visibility like every other row.
+  They came from enrol_get_all_users_courses(), which does not filter hidden courses, so a
+  hidden course could be listed with its total while the in-progress rule already excluded
+  one.
+- The cachedef_verifyattempts language string, which db/caches.php declared but the
+  language file did not define.
+
 ## 1.0.0 (2026-09-14)
 
 First release.
