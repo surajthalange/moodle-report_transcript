@@ -24,6 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$string['cachedef_verifyattempts'] = 'Verification attempts per client address';
 $string['col:completed'] = 'Completed';
 $string['col:course'] = 'Course';
 $string['col:grade'] = 'Grade';
