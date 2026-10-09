@@ -2,6 +2,8 @@
 
 [![Moodle Plugin CI](https://github.com/surajthalange/moodle-report_transcript/actions/workflows/ci.yml/badge.svg)](https://github.com/surajthalange/moodle-report_transcript/actions/workflows/ci.yml)
 
+![A learner's transcript: each course with the dates it was started and completed, the grade and a pass or fail outcome, above a Download PDF button](https://surajthalange.github.io/assets/img/transcript/learner-page.png)
+
 A Moodle report plugin that gives every learner an academic transcript: the courses they
 have completed, with dates, the final grade as each course chose to show it, and a pass or
 fail outcome. Delivered as a page, as a branded PDF carrying a verification code, and as a
