@@ -8,7 +8,7 @@ fail outcome. Delivered as a page, as a branded PDF carrying a verification code
 public verification page where anyone holding a code can confirm what was issued.
 
 - **Component:** `report_transcript`
-- **Moodle support:** 4.5 LTS floor; targets 4.5, 5.0, 5.1, 5.2
+- **Moodle support:** 4.5 LTS floor; targets 4.5, 5.0, 5.1, 5.2, 5.3
 - **Licence:** GPLv3 or later
 - **Databases:** MariaDB/MySQL and PostgreSQL, both tested on every supported branch
 - **Case study:** [How and why it was built](https://surajthalange.github.io/work/report-transcript/)
