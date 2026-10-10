@@ -1,5 +1,17 @@
 # Changes
 
+## 1.0.2 (2026-10-10)
+
+Moodle 5.3.
+
+- Declared support for Moodle 5.3, which became the current long term support release
+  on 5 October 2026, and added it to the CI matrix on PHP 8.3 and 8.4 against both
+  databases, taking the matrix to twenty jobs. Those PHP versions are 5.3's own, taken
+  from its workflows rather than assumed.
+- No code changes were needed. The 5.3 upgrade notes touch the gradebook in two places,
+  grade_item::update_deducted_mark() and assign::calculate_penalised_grade(), and this
+  plugin calls neither; nothing else it uses changed.
+
 ## 1.0.1 (2026-10-03)
 
 Both findings from the Marketplace review of 1.0.0 (MMR-244).
