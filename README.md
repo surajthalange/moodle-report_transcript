@@ -13,6 +13,7 @@ public verification page where anyone holding a code can confirm what was issued
 - **Moodle support:** 4.5 LTS floor; targets 4.5, 5.0, 5.1, 5.2
 - **Licence:** GPLv3 or later
 - **Databases:** MariaDB/MySQL and PostgreSQL, both tested on every supported branch
+- **Status:** stable, v1.0.1, [published in the Moodle plugins directory](https://marketplace.moodle.com/plugins/4184)
 - **Case study:** [How and why it was built](https://surajthalange.github.io/work/report-transcript/)
 
 ## What it does
