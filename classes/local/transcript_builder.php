@@ -114,30 +114,21 @@ class transcript_builder {
             if (!$this->is_learner($courseid, $userid, $status)) {
                 continue;
             }
-
-            $cc = $completions[$courseid] ?? null;
-            $timestarted = $this->started($cc, $enrolmentstart[$courseid] ?? 0);
-            $timecompleted = $status === grade_presenter::STATUS_COMPLETED ? (int) $cc->timecompleted : null;
-
-            $item = grade_item::fetch_course_item($courseid);
-            $resolved = (new course_total($courseid, $user))->resolve($item);
-            $grade = grade_presenter::present(
-                $item,
-                $resolved['finalgrade'],
-                $resolved['withheld'],
+            $rows[] = $this->row_for(
+                $user,
+                $course,
                 $status,
-                $this->settings
+                $completions[$courseid] ?? null,
+                $enrolmentstart[$courseid] ?? 0
             );
+        }
 
-            $rows[] = new transcript_row(
-                $courseid,
-                format_string($course->fullname, true, ['context' => context_course::instance($courseid)]),
-                $course->shortname,
-                $status,
-                $timestarted,
-                $timecompleted,
-                $grade,
-            );
+        // Courses that no longer exist cannot have reached the loop above, because
+        // completion_records() joins the course table. The archive supplies those and only
+        // those, so a grade corrected in a course that still exists always wins, and a
+        // course excluded on purpose stays excluded.
+        foreach (archive::rows_for($userid, $excluded) as $row) {
+            $rows[] = $row;
         }
 
         usort($rows, [self::class, 'compare']);
@@ -149,6 +140,52 @@ class transcript_builder {
             $rows,
             time(),
             $this->settings->documenttitle,
+        );
+    }
+
+    /**
+     * Build one row exactly as the transcript shows it.
+     *
+     * Public because the archive captures rows through it. Having one implementation is the
+     * point: an archived line has to render identically to the live line it replaces, and a
+     * second copy of this arithmetic would drift from this one.
+     *
+     * @param stdClass $user the learner, with the fields fullname() needs
+     * @param stdClass $course needs id, fullname and shortname
+     * @param string $status a grade_presenter::STATUS_* constant
+     * @param stdClass|null $cc the completion record, when there is one
+     * @param int $enrolmentstart earliest enrolment time, or 0
+     * @return transcript_row
+     */
+    public function row_for(
+        stdClass $user,
+        stdClass $course,
+        string $status,
+        ?stdClass $cc,
+        int $enrolmentstart
+    ): transcript_row {
+        $courseid = (int) $course->id;
+        $timestarted = $this->started($cc, $enrolmentstart);
+        $timecompleted = $status === grade_presenter::STATUS_COMPLETED ? (int) $cc->timecompleted : null;
+
+        $item = grade_item::fetch_course_item($courseid);
+        $resolved = (new course_total($courseid, $user))->resolve($item);
+        $grade = grade_presenter::present(
+            $item,
+            $resolved['finalgrade'],
+            $resolved['withheld'],
+            $status,
+            $this->settings
+        );
+
+        return new transcript_row(
+            $courseid,
+            format_string($course->fullname, true, ['context' => context_course::instance($courseid)]),
+            $course->shortname,
+            $status,
+            $timestarted,
+            $timecompleted,
+            $grade,
         );
     }
 

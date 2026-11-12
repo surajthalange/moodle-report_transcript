@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="report/transcript/db" VERSION="20260914" COMMENT="XMLDB file for Moodle report/transcript"
+<XMLDB PATH="report/transcript/db" VERSION="20261112" COMMENT="XMLDB file for Moodle report/transcript"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -21,6 +21,39 @@
       <INDEXES>
         <INDEX NAME="code" UNIQUE="true" FIELDS="code"/>
         <INDEX NAME="issuerid" UNIQUE="false" FIELDS="issuerid"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="report_transcript_archive" COMMENT="One row per learner per course, holding what a transcript line needs so that the line survives the course being deleted.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The learner."/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The course as it was; the course row may no longer exist."/>
+        <FIELD NAME="coursename" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Formatted full name, captured so it renders without the course."/>
+        <FIELD NAME="shortname" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="idnumber" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="Kept for the site's own reporting; the transcript line does not show it."/>
+        <FIELD NAME="categoryid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="So that the excluded-categories setting still applies once the course is gone."/>
+        <FIELD NAME="categoryname" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="Kept for the site's own reporting; the transcript line does not show it."/>
+        <FIELD NAME="coursestartdate" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="courseenddate" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false" COMMENT="A grade_presenter STATUS_ constant; only completed rows are archived."/>
+        <FIELD NAME="timestarted" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timecompleted" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="gradetext" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="The grade as it was displayed, or the not-available dash."/>
+        <FIELD NAME="outcome" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="An outcome constant."/>
+        <FIELD NAME="hidden" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="1 when the gradebook was withholding the grade at capture."/>
+        <FIELD NAME="finalgrade" TYPE="number" LENGTH="10" NOTNULL="false" SEQUENCE="false" DECIMALS="5"/>
+        <FIELD NAME="gradepass" TYPE="number" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" DECIMALS="5"/>
+        <FIELD NAME="displaytype" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="The GRADE_DISPLAY_TYPE that produced gradetext."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="useridcourseid" UNIQUE="true" FIELDS="userid, courseid"/>
+        <INDEX NAME="courseid" UNIQUE="false" FIELDS="courseid"/>
       </INDEXES>
     </TABLE>
   </TABLES>

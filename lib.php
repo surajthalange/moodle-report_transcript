@@ -23,6 +23,7 @@
  */
 
 use report_transcript\local\access;
+use report_transcript\local\archive;
 
 /**
  * Add a "Transcript" link to a user's profile page, when the viewer may see it.
@@ -75,4 +76,22 @@ function report_transcript_pluginfile($course, $cm, $context, $filearea, $args, 
     // The logo is public: it is printed on documents that leave the site.
     send_stored_file($file, DAYSECS, 0, $forcedownload, $options);
     return true;
+}
+
+/**
+ * Archive every completion in a course while the course still exists.
+ *
+ * Core calls this from delete_course() before anything is removed, so the completion
+ * records and the gradebook are still intact and the grades captured here are the last
+ * ones the course ever had.
+ *
+ * Failures are deliberately not swallowed. If this throws, the deletion stops and the
+ * administrator sees why, which is recoverable: fix the problem and delete again. Catching
+ * the error would let the course go while the transcripts it belonged to quietly lost a
+ * line, and that silent loss is the exact failure this archive exists to prevent.
+ *
+ * @param stdClass $course the course about to be deleted
+ */
+function report_transcript_pre_course_delete(stdClass $course) {
+    archive::capture_course((int) $course->id);
 }

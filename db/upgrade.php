@@ -31,5 +31,49 @@
  * @return bool
  */
 function xmldb_report_transcript_upgrade(int $oldversion): bool {
+    global $DB;
+
+    $dbman = $DB->get_manager();
+
+    if ($oldversion < 2026111200) {
+        // The archive: one row per learner per course, so that a transcript line
+        // survives the course being deleted. Mirrors db/install.xml exactly.
+        $table = new xmldb_table('report_transcript_archive');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('coursename', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('shortname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('idnumber', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
+        $table->add_field('categoryid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('categoryname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
+        $table->add_field('coursestartdate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('courseenddate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timestarted', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecompleted', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('gradetext', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
+        $table->add_field('outcome', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, '');
+        $table->add_field('hidden', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('finalgrade', XMLDB_TYPE_NUMBER, '10, 5', null, null, null, null);
+        $table->add_field('gradepass', XMLDB_TYPE_NUMBER, '10, 5', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('displaytype', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('userid', XMLDB_KEY_FOREIGN, ['userid'], 'user', ['id']);
+
+        $table->add_index('useridcourseid', XMLDB_INDEX_UNIQUE, ['userid', 'courseid']);
+        $table->add_index('courseid', XMLDB_INDEX_NOTUNIQUE, ['courseid']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026111200, 'report', 'transcript');
+    }
+
     return true;
 }
