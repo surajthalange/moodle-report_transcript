@@ -23,6 +23,7 @@ use core_privacy\local\request\approved_userlist;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
 use core_privacy\tests\provider_testcase;
+use report_transcript\local\archive;
 use report_transcript\local\issuer;
 use report_transcript\local\settings;
 use report_transcript\local\transcript_builder;
@@ -86,11 +87,25 @@ final class provider_test extends provider_testcase {
         $collection = provider::get_metadata(new collection('report_transcript'));
         $items = $collection->get_collection();
 
-        $this->assertCount(1, $items);
-        $this->assertSame(issuer::TABLE, $items[0]->get_name());
+        $this->assertCount(2, $items);
+        $this->assertSame(archive::TABLE, $items[0]->get_name());
+        $this->assertSame(
+            [
+                'userid',
+                'courseid',
+                'coursename',
+                'timestarted',
+                'timecompleted',
+                'gradetext',
+                'outcome',
+                'finalgrade',
+            ],
+            array_keys($items[0]->get_privacy_fields())
+        );
+        $this->assertSame(issuer::TABLE, $items[1]->get_name());
         $this->assertSame(
             ['userid', 'issuerid', 'code', 'documenttitle', 'snapshot', 'timecreated'],
-            array_keys($items[0]->get_privacy_fields())
+            array_keys($items[1]->get_privacy_fields())
         );
     }
 
@@ -164,9 +179,13 @@ final class provider_test extends provider_testcase {
         $this->assertSame(0, $DB->count_records(issuer::TABLE, ['issuerid' => $this->manager->id]), 'Manager no longer named');
         $this->assertSame(2, $DB->count_records(issuer::TABLE, ['issuerid' => 0]));
 
+        $this->assertSame(1, $DB->count_records(archive::TABLE, ['userid' => $this->learner->id]), 'Archive still there');
+
         provider::delete_data_for_user(new approved_contextlist($this->learner, 'report_transcript', [$learnerctx->id]));
         $this->assertSame(0, $DB->count_records(issuer::TABLE, ['userid' => $this->learner->id]));
         $this->assertSame(1, $DB->count_records(issuer::TABLE, ['userid' => $this->other->id]), 'Unrelated learner untouched');
+        $this->assertSame(0, $DB->count_records(archive::TABLE, ['userid' => $this->learner->id]), 'Archive erased too');
+        $this->assertSame(1, $DB->count_records(archive::TABLE, ['userid' => $this->other->id]), 'Unrelated archive untouched');
     }
 
     /**
@@ -179,6 +198,8 @@ final class provider_test extends provider_testcase {
 
         $this->assertSame(0, $DB->count_records(issuer::TABLE, ['userid' => $this->learner->id]));
         $this->assertSame(1, $DB->count_records(issuer::TABLE, ['userid' => $this->other->id]));
+        $this->assertSame(0, $DB->count_records(archive::TABLE, ['userid' => $this->learner->id]));
+        $this->assertSame(1, $DB->count_records(archive::TABLE, ['userid' => $this->other->id]));
     }
 
     /**
@@ -196,5 +217,33 @@ final class provider_test extends provider_testcase {
         provider::delete_data_for_users(new approved_userlist($learnerctx, 'report_transcript', [(int) $this->learner->id]));
         $this->assertSame(0, $DB->count_records(issuer::TABLE, ['userid' => $this->learner->id]));
         $this->assertSame(1, $DB->count_records(issuer::TABLE, ['userid' => $this->other->id]));
+        $this->assertSame(0, $DB->count_records(archive::TABLE, ['userid' => $this->learner->id]));
+        $this->assertSame(1, $DB->count_records(archive::TABLE, ['userid' => $this->other->id]));
+    }
+
+    /**
+     * A learner whose archived course has since been deleted is still found, and still
+     * exported. Without the archive they would have no context here at all.
+     */
+    public function test_archive_is_exported_after_the_course_is_deleted(): void {
+        global $DB;
+
+        $courseid = (int) $DB->get_field(archive::TABLE, 'courseid', ['userid' => $this->learner->id]);
+        delete_course($courseid, false);
+
+        $contexts = provider::get_contexts_for_userid((int) $this->learner->id)->get_contextids();
+        $learnerctx = context_user::instance($this->learner->id);
+        $this->assertContains($learnerctx->id, $contexts);
+
+        $this->export_context_data_for_user((int) $this->learner->id, $learnerctx, 'report_transcript');
+        $writer = writer::with_context($learnerctx);
+        $this->assertTrue($writer->has_any_data());
+
+        $data = $writer->get_data([
+            get_string('pluginname', 'report_transcript'),
+            get_string('privacy:export:archive', 'report_transcript'),
+        ]);
+        $this->assertNotEmpty($data->courses);
+        $this->assertSame('Ethics', $data->courses[0]['coursename']);
     }
 }

@@ -1,5 +1,29 @@
 # Changes
 
+## 1.1.0 (2026-11-12)
+
+The transcript archive: completed courses stay on a transcript after the course is deleted.
+
+- Transcripts are built from core's completion records and gradebook, and those belong to
+  the course, so deleting a course removed its line from every learner's transcript.
+  Documents already downloaded were never affected, because each download freezes its own
+  copy with its verification code, but a learner who had not downloaded one lost the record.
+- Completions are now archived as they happen, and every learner in a course is archived
+  once more immediately before that course is deleted, while its records are still intact,
+  so the grades kept are the last ones the course ever had.
+- A command line backfill and an ad hoc task cover completions that predate this version.
+  Both are batched, resumable and safe to run more than once. Courses deleted before the
+  upgrade cannot be recovered.
+- While a course exists its live data is used, so a corrected grade or a renamed course
+  still shows its current value. The archive is read only for courses that are gone.
+- The rules that keep a course off a transcript keep working after deletion: a teacher's own
+  courses stay off their transcript, an excluded category stays excluded even once the
+  category itself is deleted, and a completion that was revoked does not come back.
+- Archived rows are covered by the privacy API. They are declared, included in a learner's
+  export, and removed when a learner's data is deleted.
+- If archiving fails while a course is being deleted, the deletion stops and reports why
+  rather than proceeding silently. Losing the record quietly is the failure this prevents.
+
 ## 1.0.2 (2026-10-10)
 
 Moodle 5.3.

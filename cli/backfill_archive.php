@@ -31,7 +31,9 @@ define('CLI_SCRIPT', true);
 require(__DIR__ . '/../../../config.php');
 require_once($CFG->libdir . '/clilib.php');
 
+use core\task\manager;
 use report_transcript\local\backfill;
+use report_transcript\task\backfill_archive;
 
 [$options, $unrecognised] = cli_get_params(
     [
@@ -39,6 +41,7 @@ use report_transcript\local\backfill;
         'after' => 0,
         'limit' => 0,
         'dry-run' => false,
+        'queue' => false,
     ],
     [
         'h' => 'help',
@@ -62,9 +65,13 @@ Options:
       --after=N  Start after course id N. Use this to resume an interrupted run.
       --limit=N  Stop after N courses. Default 0, meaning every course.
       --dry-run  Count the work without writing anything.
+      --queue    Hand the work to cron instead of doing it now. The task archives
+                 fifty courses per run and queues itself again until it is done,
+                 which suits a large site better than one long command.
 
-Example:
+Examples:
   php report/transcript/cli/backfill_archive.php
+  php report/transcript/cli/backfill_archive.php --queue
 
 EOT;
     exit(0);
@@ -72,6 +79,15 @@ EOT;
 
 $after = (int) $options['after'];
 $limit = (int) $options['limit'];
+
+if ($options['queue']) {
+    $task = new backfill_archive();
+    $task->set_custom_data(['after' => $after]);
+    manager::queue_adhoc_task($task);
+    $waiting = backfill::remaining($after);
+    cli_writeln("Queued. {$waiting} course(s) will be archived by cron, fifty at a time.");
+    exit(0);
+}
 
 if ($options['dry-run']) {
     $courses = count(backfill::course_ids($after, $limit));
