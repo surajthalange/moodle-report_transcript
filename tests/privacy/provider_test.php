@@ -231,9 +231,15 @@ final class provider_test extends provider_testcase {
         $courseid = (int) $DB->get_field(archive::TABLE, 'courseid', ['userid' => $this->learner->id]);
         delete_course($courseid, false);
 
-        $contexts = provider::get_contexts_for_userid((int) $this->learner->id)->get_contextids();
+        // Drop every issued document, so an archived row is the only thing left that can
+        // put this learner's context on the list.
+        $DB->delete_records(issuer::TABLE, ['userid' => $this->learner->id]);
+
         $learnerctx = context_user::instance($this->learner->id);
-        $this->assertContains($learnerctx->id, $contexts);
+
+        // Context ids arrive from the database as strings, so compare them as integers.
+        $contexts = array_map('intval', provider::get_contexts_for_userid((int) $this->learner->id)->get_contextids());
+        $this->assertContains((int) $learnerctx->id, $contexts);
 
         $this->export_context_data_for_user((int) $this->learner->id, $learnerctx, 'report_transcript');
         $writer = writer::with_context($learnerctx);
