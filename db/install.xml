@@ -32,6 +32,7 @@
         <FIELD NAME="shortname" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="idnumber" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="Kept for the site's own reporting; the transcript line does not show it."/>
         <FIELD NAME="categoryid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="So that the excluded-categories setting still applies once the course is gone."/>
+        <FIELD NAME="categorypath" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="Slash delimited ancestor ids ending with the course category, so an excluded ancestor still matches after the categories themselves are deleted."/>
         <FIELD NAME="categoryname" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="Kept for the site's own reporting; the transcript line does not show it."/>
         <FIELD NAME="coursestartdate" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="courseenddate" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>

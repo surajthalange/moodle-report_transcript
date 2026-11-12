@@ -47,6 +47,7 @@ function xmldb_report_transcript_upgrade(int $oldversion): bool {
         $table->add_field('shortname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
         $table->add_field('idnumber', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
         $table->add_field('categoryid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('categorypath', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
         $table->add_field('categoryname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
         $table->add_field('coursestartdate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
         $table->add_field('courseenddate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');

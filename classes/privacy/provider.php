@@ -25,6 +25,7 @@ use core_privacy\local\request\contextlist;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
+use report_transcript\local\archive;
 use report_transcript\local\issuer;
 use report_transcript\local\outcome;
 use report_transcript\local\transcript;
@@ -37,6 +38,11 @@ use report_transcript\local\transcript;
  * user context. For an issuer who is not the learner only the code and date are theirs;
  * the snapshot is someone else's data and is never exported to them, and deleting the
  * issuer clears their id from the row rather than destroying the learner's record.
+ *
+ * The archive table holds the learner's completed courses so that a line survives the
+ * course being deleted. Those rows outlive the course context entirely, so like issues they
+ * belong to the learner and live in the learner's user context. A learner erased here is
+ * erased from the archive too: the record exists to serve them, not to outlast them.
  *
  * @package    report_transcript
  * @copyright  2026 Suraj Thalange
@@ -53,6 +59,17 @@ class provider implements
      * @return collection
      */
     public static function get_metadata(collection $collection): collection {
+        $collection->add_database_table(archive::TABLE, [
+            'userid' => 'privacy:metadata:archive:userid',
+            'courseid' => 'privacy:metadata:archive:courseid',
+            'coursename' => 'privacy:metadata:archive:coursename',
+            'timestarted' => 'privacy:metadata:archive:timestarted',
+            'timecompleted' => 'privacy:metadata:archive:timecompleted',
+            'gradetext' => 'privacy:metadata:archive:gradetext',
+            'outcome' => 'privacy:metadata:archive:outcome',
+            'finalgrade' => 'privacy:metadata:archive:finalgrade',
+        ], 'privacy:metadata:archive');
+
         $collection->add_database_table(issuer::TABLE, [
             'userid' => 'privacy:metadata:issue:userid',
             'issuerid' => 'privacy:metadata:issue:issuerid',
@@ -78,6 +95,14 @@ class provider implements
                   JOIN {context} ctx ON ctx.instanceid = i.userid AND ctx.contextlevel = :userlevel
                  WHERE i.userid = :learner OR i.issuerid = :issuer";
         $contextlist->add_from_sql($sql, ['userlevel' => CONTEXT_USER, 'learner' => $userid, 'issuer' => $userid]);
+
+        // A learner can have archived courses and have never downloaded anything.
+        $sql = "SELECT ctx.id
+                  FROM {report_transcript_archive} a
+                  JOIN {context} ctx ON ctx.instanceid = a.userid AND ctx.contextlevel = :userlevel
+                 WHERE a.userid = :learner";
+        $contextlist->add_from_sql($sql, ['userlevel' => CONTEXT_USER, 'learner' => $userid]);
+
         return $contextlist;
     }
 
@@ -97,6 +122,11 @@ class provider implements
         $userlist->add_from_sql(
             'issuerid',
             "SELECT issuerid FROM {report_transcript_issue} WHERE userid = :learner AND issuerid > 0",
+            $params
+        );
+        $userlist->add_from_sql(
+            'userid',
+            "SELECT userid FROM {report_transcript_archive} WHERE userid = :learner",
             $params
         );
     }
@@ -130,6 +160,22 @@ class provider implements
                 }
             }
 
+            if ($learnerid === $userid) {
+                $archived = [];
+                foreach ($DB->get_records(archive::TABLE, ['userid' => $learnerid], 'timecompleted ASC') as $row) {
+                    $archived[] = self::export_archive_row($row);
+                }
+                if ($archived) {
+                    writer::with_context($context)->export_data(
+                        [
+                            get_string('pluginname', 'report_transcript'),
+                            get_string('privacy:export:archive', 'report_transcript'),
+                        ],
+                        (object) ['courses' => $archived]
+                    );
+                }
+            }
+
             $issuedbyme = [];
             foreach ($issues as $issue) {
                 if ((int) $issue->issuerid === $userid && $learnerid !== $userid) {
@@ -143,6 +189,24 @@ class provider implements
                 );
             }
         }
+    }
+
+    /**
+     * One archived course in export form.
+     *
+     * @param \stdClass $row
+     * @return array
+     */
+    private static function export_archive_row(\stdClass $row): array {
+        return [
+            'coursename' => $row->coursename,
+            'shortname' => $row->shortname,
+            'timestarted' => $row->timestarted ? transform::datetime($row->timestarted) : null,
+            'timecompleted' => $row->timecompleted ? transform::datetime($row->timecompleted) : null,
+            'grade' => $row->gradetext,
+            'outcome' => outcome::label((string) $row->outcome),
+            'archivedon' => transform::datetime($row->timemodified),
+        ];
     }
 
     /**
@@ -183,6 +247,7 @@ class provider implements
         global $DB;
         if ($context instanceof context_user) {
             $DB->delete_records(issuer::TABLE, ['userid' => $context->instanceid]);
+            archive::delete_for_user((int) $context->instanceid);
         }
     }
 
@@ -201,6 +266,7 @@ class provider implements
             }
             if ((int) $context->instanceid === $userid) {
                 $DB->delete_records(issuer::TABLE, ['userid' => $userid]);
+                archive::delete_for_user($userid);
             } else {
                 $DB->set_field(issuer::TABLE, 'issuerid', 0, ['userid' => $context->instanceid, 'issuerid' => $userid]);
             }
@@ -222,6 +288,7 @@ class provider implements
         $userids = array_map('intval', $userlist->get_userids());
         if (in_array($learnerid, $userids, true)) {
             $DB->delete_records(issuer::TABLE, ['userid' => $learnerid]);
+            archive::delete_for_user($learnerid);
             return;
         }
         [$insql, $params] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);

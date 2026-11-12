@@ -262,12 +262,17 @@ class transcript_builder {
     /**
      * Is the user a learner in this course, by the gradebook's definition?
      *
+     * Public because the archive has to answer it the same way. A teacher can hold a
+     * completion record, and the live transcript keeps those off their own transcript; an
+     * archive that captured them anyway would put them back the moment the course was
+     * deleted.
+     *
      * @param int $courseid
      * @param int $userid
      * @param string $status the row's status
      * @return bool
      */
-    private function is_learner(int $courseid, int $userid, string $status): bool {
+    public function is_learner(int $courseid, int $userid, string $status): bool {
         global $CFG;
 
         $gradebookroles = array_filter(array_map('intval', explode(',', (string) $CFG->gradebookroles)));

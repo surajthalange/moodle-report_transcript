@@ -19,8 +19,6 @@ namespace report_transcript\local;
 use core_course_category;
 use stdClass;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * The archive: what a completed course looked like, kept so the line survives the course.
  *
@@ -70,6 +68,12 @@ final class archive {
         }
 
         $builder = new transcript_builder(settings::from_config());
+        if (!$builder->is_learner($courseid, $userid, grade_presenter::STATUS_COMPLETED)) {
+            // The same test the live transcript makes. A completion record alone does not
+            // put a course on someone's transcript if the gradebook would not call them a
+            // learner there, and the archive must not disagree with the page it stands in for.
+            return false;
+        }
         $row = $builder->row_for(
             $user,
             $course,
@@ -104,6 +108,11 @@ final class archive {
             ['courseid' => $courseid]
         );
 
+        // A completion that has since been revoked must not survive in the archive. The
+        // live transcript already stops showing it; without this the course being deleted
+        // would quietly bring it back.
+        self::forget_revoked($courseid, array_map('intval', $userids));
+
         $written = 0;
         foreach ($userids as $userid) {
             if (self::capture((int) $userid, $courseid)) {
@@ -134,7 +143,7 @@ final class archive {
 
         $rows = [];
         foreach ($records as $record) {
-            if (isset($excludedcategories[(int) $record->categoryid])) {
+            if (self::is_excluded($record, $excludedcategories)) {
                 continue;
             }
             $rows[] = self::to_row($record);
@@ -198,6 +207,7 @@ final class archive {
             'shortname' => (string) $course->shortname,
             'idnumber' => (string) ($course->idnumber ?? ''),
             'categoryid' => (int) ($course->category ?? 0),
+            'categorypath' => self::category_path($course),
             'categoryname' => self::category_name($course),
             'coursestartdate' => (int) ($course->startdate ?? 0),
             'courseenddate' => (int) ($course->enddate ?? 0),
@@ -221,6 +231,70 @@ final class archive {
         }
         $record->timecreated = $now;
         $DB->insert_record(self::TABLE, $record);
+    }
+
+    /**
+     * Whether an archived row falls under a category the settings exclude.
+     *
+     * Tested against the stored ancestor path rather than the leaf id, because by the time
+     * a row is read its categories may have been deleted as well, and an excluded parent
+     * has to keep excluding.
+     *
+     * @param stdClass $record
+     * @param array<int, true> $excludedcategories
+     * @return bool
+     */
+    private static function is_excluded(stdClass $record, array $excludedcategories): bool {
+        if (!$excludedcategories) {
+            return false;
+        }
+        if (isset($excludedcategories[(int) $record->categoryid])) {
+            return true;
+        }
+        $path = (string) ($record->categorypath ?? '');
+        foreach (array_keys($excludedcategories) as $categoryid) {
+            if ($path !== '' && str_contains($path, '/' . (int) $categoryid . '/')) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Drop archived rows for learners in this course who no longer have a completion.
+     *
+     * @param int $courseid
+     * @param int[] $stillcompleted user ids that currently have a completion
+     */
+    private static function forget_revoked(int $courseid, array $stillcompleted): void {
+        global $DB;
+
+        if (!$stillcompleted) {
+            $DB->delete_records(self::TABLE, ['courseid' => $courseid]);
+            return;
+        }
+        [$insql, $params] = $DB->get_in_or_equal($stillcompleted, SQL_PARAMS_NAMED, 'u', false);
+        $params['courseid'] = $courseid;
+        $DB->delete_records_select(self::TABLE, "courseid = :courseid AND userid {$insql}", $params);
+    }
+
+    /**
+     * Slash delimited ancestor ids ending with the course's own category.
+     *
+     * @param stdClass $course
+     * @return string
+     */
+    private static function category_path(stdClass $course): string {
+        $categoryid = (int) ($course->category ?? 0);
+        if (!$categoryid) {
+            return '';
+        }
+        $category = core_course_category::get($categoryid, IGNORE_MISSING, true);
+        if (!$category) {
+            return '/' . $categoryid . '/';
+        }
+        $ids = array_merge(array_map('intval', $category->get_parents()), [$categoryid]);
+        return '/' . implode('/', $ids) . '/';
     }
 
     /**
