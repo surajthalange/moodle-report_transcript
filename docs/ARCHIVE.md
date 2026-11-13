@@ -35,15 +35,67 @@ only consulted for courses that no longer exist.
 
 ## Install and upgrade
 
-1. Put the site into maintenance mode.
-2. Replace the `report/transcript` directory with this version.
-3. Visit **Site administration > Notifications**, or run
-   `php admin/cli/upgrade.php`, and complete the upgrade.
-4. Take the site out of maintenance mode.
-5. Run the one-time backfill, below.
+This version is 1.1.0. It upgrades in place from any earlier 1.0.x release, and it installs
+cleanly on a site that has never had the plugin.
 
-The upgrade adds one table and changes nothing that already exists. Transcripts, issued
-PDFs and verification codes are untouched.
+### Which Moodle versions this runs on
+
+It requires Moodle 4.5 and supports 4.5 through 5.3. One single build covers that whole
+range, so while you move instances to newer Moodle you do not need different plugin
+versions for different instances, and you can upgrade Moodle and the plugin in either
+order.
+
+**Moodle 4.1 to 4.4 cannot run this plugin.** That has been true of every released version,
+including the one already on your instances, so this change does not alter it. Instances
+below 4.5 will refuse to install it until they are upgraded.
+
+### Before you start
+
+1. Back up the database and the `report/transcript` directory. Please do not skip this. See
+   the rollback note below for why it matters more than usual.
+2. Note the plugin version you are on now, from **Site administration > Plugins > Plugins
+   overview**. You will want it if you ever need to compare.
+
+### The upgrade, per instance
+
+Each Moodle instance is independent, so do them one at a time and in any order that suits
+you. An instance that has not been upgraded yet keeps working exactly as it does today.
+
+1. Put the site into maintenance mode.
+2. Replace the whole `report/transcript` directory with this version. Replace it rather than
+   copying over the top, so that no file from the previous version is left behind.
+3. Visit **Site administration > Notifications**, or run `php admin/cli/upgrade.php`, and
+   complete the upgrade.
+4. Take the site out of maintenance mode.
+5. Run the one-time backfill, described in the next section. This is per instance, so it
+   needs running once on each site you upgrade.
+
+### Checking it worked
+
+Two things confirm a successful upgrade:
+
+1. **Site administration > Plugins > Plugins overview** shows Transcript at version 1.1.0.
+2. A learner's transcript still lists their completed courses, exactly as before. Nothing
+   about the existing transcript should look different, because nothing about it changed.
+
+The upgrade adds one database table and changes nothing that already exists. It adds no
+settings and no new permissions, so your existing configuration carries over untouched, and
+existing transcripts, issued PDFs and verification codes are unaffected.
+
+### If you need to roll back
+
+Rolling back is not simply a matter of putting the old files back. Moodle records the
+installed version of every plugin in its database, and if it finds older code than the
+version it has recorded, it reports a downgrade and refuses to continue. So a file-only
+rollback leaves the site unable to complete any upgrade until it is resolved.
+
+To roll back properly, restore the database backup and the previous `report/transcript`
+directory together, as one operation. This is the reason the backup above matters.
+
+Be aware of what rolling back costs you: the archived records stay in the database, but the
+earlier version does not read them, so transcript lines for courses that have since been
+deleted would disappear again. If you later reinstall 1.1.0, those archived records are
+still there and the lines come back.
 
 ## The one-time backfill
 
