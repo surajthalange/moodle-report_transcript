@@ -127,7 +127,7 @@ class transcript_builder {
         // completion_records() joins the course table. The archive supplies those and only
         // those, so a grade corrected in a course that still exists always wins, and a
         // course excluded on purpose stays excluded.
-        foreach (archive::rows_for($userid, $excluded) as $row) {
+        foreach (archive::rows_for($userid, $excluded, $this->settings) as $row) {
             $rows[] = $row;
         }
 
@@ -248,7 +248,7 @@ class transcript_builder {
      * @param int $userid the learner
      * @return bool
      */
-    private function learner_can_see_course(stdClass $course, int $userid): bool {
+    public function learner_can_see_course(stdClass $course, int $userid): bool {
         if ($course->visible) {
             return true;
         }

@@ -16,6 +16,7 @@
 
 namespace report_transcript\local;
 
+use context_course;
 use core_course_category;
 use stdClass;
 
@@ -27,10 +28,16 @@ use stdClass;
  * issue freezes its own snapshot, but a learner who never downloaded one would lose the
  * record entirely.
  *
- * So each completion is captured here: when it happens, again immediately before the course
- * is deleted so the last known grades win, and in bulk by the backfill for completions that
- * predate this feature. Rows are read back only for courses that no longer exist, which is
- * what keeps a corrected grade in a live course authoritative.
+ * So each transcript line is captured here: when a course is completed, again immediately
+ * before the course is deleted so the last known grades win, and in bulk by the backfill.
+ * Rows are read back only for courses that no longer exist, which is what keeps a corrected
+ * grade in a live course authoritative.
+ *
+ * Every status the live transcript can show is kept, not only completions. In-progress and
+ * untracked lines appear on transcripts whenever the matching setting is on, so leaving them
+ * out meant a line that was visible before a course was deleted vanished afterwards. Which
+ * statuses are actually shown is decided when the archive is READ, from the settings as they
+ * stand then, so turning a setting on later needs no second backfill.
  *
  * Rows outlive the course but belong to the learner, so they live in the learner's user
  * context for privacy purposes, exactly as issued transcripts do.
@@ -61,14 +68,14 @@ final class archive {
         if (!$user) {
             return false;
         }
+        $builder = new transcript_builder(settings::from_config());
         $cc = self::completion_record($userid, $courseid);
-        if (!$cc || !$cc->timecompleted) {
-            // Only completed courses are archived. An unfinished course was never a line.
+
+        $status = self::status_for($builder, $course, $userid, $cc);
+        if ($status === null) {
             return false;
         }
-
-        $builder = new transcript_builder(settings::from_config());
-        if (!$builder->is_learner($courseid, $userid, grade_presenter::STATUS_COMPLETED)) {
+        if (!$builder->is_learner($courseid, $userid, $status)) {
             // The same test the live transcript makes. A completion record alone does not
             // put a course on someone's transcript if the gradebook would not call them a
             // learner there, and the archive must not disagree with the page it stands in for.
@@ -77,7 +84,7 @@ final class archive {
         $row = $builder->row_for(
             $user,
             $course,
-            grade_presenter::STATUS_COMPLETED,
+            $status,
             $cc,
             self::enrolment_start($userid, $courseid)
         );
@@ -87,7 +94,47 @@ final class archive {
     }
 
     /**
-     * Capture every learner who has completed this course.
+     * The status the live transcript would give this course for this learner, or null if it
+     * would not list the course at all.
+     *
+     * This mirrors build()'s three rules deliberately. The two settings that decide whether
+     * in-progress and untracked lines are listed are NOT consulted here: the archive keeps
+     * the row either way and the read path applies the settings of the moment, so an
+     * administrator turning one on does not have to backfill again to make old courses
+     * appear.
+     *
+     * @param transcript_builder $builder
+     * @param stdClass $course
+     * @param int $userid
+     * @param stdClass|null $cc the learner's completion record for this course, if any
+     * @return string|null a grade_presenter::STATUS_* constant, or null
+     */
+    private static function status_for(
+        transcript_builder $builder,
+        stdClass $course,
+        int $userid,
+        ?stdClass $cc
+    ): ?string {
+        if ($cc && $cc->timecompleted) {
+            return grade_presenter::STATUS_COMPLETED;
+        }
+
+        // Not completed, so the live transcript lists it only on an active enrolment in a
+        // course the learner could actually see.
+        if (!is_enrolled(context_course::instance((int) $course->id), $userid, '', true)) {
+            return null;
+        }
+        if (!$builder->learner_can_see_course($course, $userid)) {
+            return null;
+        }
+
+        return !empty($course->enablecompletion)
+            ? grade_presenter::STATUS_INPROGRESS
+            : grade_presenter::STATUS_UNTRACKED;
+    }
+
+    /**
+     * Capture every learner whose transcript lists this course.
      *
      * Called immediately before the course is deleted, while the completion records and the
      * gradebook are still intact, and by the backfill.
@@ -101,24 +148,21 @@ final class archive {
         if ($courseid === SITEID) {
             return 0;
         }
-        $userids = $DB->get_fieldset_select(
-            'course_completions',
-            'DISTINCT userid',
-            'course = :courseid AND timecompleted IS NOT NULL AND timecompleted > 0',
-            ['courseid' => $courseid]
-        );
-
-        // A completion that has since been revoked must not survive in the archive. The
-        // live transcript already stops showing it; without this the course being deleted
-        // would quietly bring it back.
-        self::forget_revoked($courseid, array_map('intval', $userids));
-
         $written = 0;
-        foreach ($userids as $userid) {
-            if (self::capture((int) $userid, $courseid)) {
+        $captured = [];
+        foreach (self::candidate_userids($courseid) as $userid) {
+            if (self::capture($userid, $courseid)) {
                 $written++;
+                $captured[] = $userid;
             }
         }
+
+        // Anything still archived for this course that no longer earns a transcript line has
+        // to go: a completion since revoked, or a learner since unenrolled. The live
+        // transcript has already stopped showing those, and letting the course be deleted
+        // must not quietly bring them back.
+        self::forget_not_captured($courseid, $captured);
+
         return $written;
     }
 
@@ -132,8 +176,14 @@ final class archive {
      * @param array<int, true> $excludedcategories category ids the settings exclude
      * @return transcript_row[]
      */
-    public static function rows_for(int $userid, array $excludedcategories = []): array {
+    public static function rows_for(
+        int $userid,
+        array $excludedcategories = [],
+        ?settings $settings = null
+    ): array {
         global $DB;
+
+        $settings = $settings ?? settings::from_config();
 
         $sql = "SELECT a.*
                   FROM {" . self::TABLE . "} a
@@ -144,6 +194,9 @@ final class archive {
         $rows = [];
         foreach ($records as $record) {
             if (self::is_excluded($record, $excludedcategories)) {
+                continue;
+            }
+            if (!self::status_shown((string) $record->status, $settings)) {
                 continue;
             }
             $rows[] = self::to_row($record);
@@ -234,6 +287,24 @@ final class archive {
     }
 
     /**
+     * Whether a stored row's status is one the site currently lists.
+     *
+     * Applied on read rather than on capture, so that turning a setting on makes archived
+     * rows appear without a second backfill, and turning it off hides them again.
+     *
+     * @param string $status a grade_presenter::STATUS_* constant
+     * @param settings $settings
+     * @return bool
+     */
+    private static function status_shown(string $status, settings $settings): bool {
+        return match ($status) {
+            grade_presenter::STATUS_INPROGRESS => $settings->includeinprogress,
+            grade_presenter::STATUS_UNTRACKED => $settings->includeuntracked,
+            default => true,
+        };
+    }
+
+    /**
      * Whether an archived row falls under a category the settings exclude.
      *
      * Tested against the stored ancestor path rather than the leaf id, because by the time
@@ -261,19 +332,59 @@ final class archive {
     }
 
     /**
-     * Drop archived rows for learners in this course who no longer have a completion.
+     * Everyone who might have a transcript line in this course.
+     *
+     * Completions alone were swept before 1.1.1, which is why an in-progress line
+     * disappeared when its course was deleted. Active enrolments supply the in-progress and
+     * untracked lines, so they have to be swept as well.
      *
      * @param int $courseid
-     * @param int[] $stillcompleted user ids that currently have a completion
+     * @return int[] distinct user ids
      */
-    private static function forget_revoked(int $courseid, array $stillcompleted): void {
+    private static function candidate_userids(int $courseid): array {
         global $DB;
 
-        if (!$stillcompleted) {
+        $completed = $DB->get_fieldset_select(
+            'course_completions',
+            'DISTINCT userid',
+            'course = :courseid AND timecompleted IS NOT NULL AND timecompleted > 0',
+            ['courseid' => $courseid]
+        );
+
+        $enrolled = array_keys(get_enrolled_users(
+            context_course::instance($courseid),
+            '',
+            0,
+            'u.id',
+            null,
+            0,
+            0,
+            true
+        ));
+
+        $ids = array_map('intval', array_merge($completed, $enrolled));
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * Drop archived rows for learners in this course who no longer earn a transcript line.
+     *
+     * Before 1.1.1 this only considered revoked completions. It now covers anyone the sweep
+     * did not capture, which includes a learner since unenrolled from a course they had not
+     * completed, because the live transcript has stopped listing them either way.
+     *
+     * @param int $courseid
+     * @param int[] $captured user ids just captured for this course
+     */
+    private static function forget_not_captured(int $courseid, array $captured): void {
+        global $DB;
+
+        if (!$captured) {
             $DB->delete_records(self::TABLE, ['courseid' => $courseid]);
             return;
         }
-        [$insql, $params] = $DB->get_in_or_equal($stillcompleted, SQL_PARAMS_NAMED, 'u', false);
+        [$insql, $params] = $DB->get_in_or_equal($captured, SQL_PARAMS_NAMED, 'u', false);
         $params['courseid'] = $courseid;
         $DB->delete_records_select(self::TABLE, "courseid = :courseid AND userid {$insql}", $params);
     }

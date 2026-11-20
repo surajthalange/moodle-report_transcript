@@ -82,15 +82,32 @@ final class backfill {
     public static function course_ids(int $after = 0, int $limit = 0): array {
         global $DB;
 
-        $sql = "SELECT DISTINCT cc.course
-                  FROM {course_completions} cc
-                  JOIN {course} c ON c.id = cc.course
-                 WHERE cc.timecompleted IS NOT NULL
-                       AND cc.timecompleted > 0
-                       AND cc.course > :after
-                       AND cc.course <> :siteid
-              ORDER BY cc.course ASC";
-        $records = $DB->get_records_sql($sql, ['after' => $after, 'siteid' => SITEID], 0, $limit ?: 0);
+        // Courses with a completion, and courses with an active enrolment. The second half
+        // was missing before 1.1.1, so the backfill never reached the in-progress and
+        // untracked lines that the archive is now responsible for.
+        $sql = "SELECT c.id
+                  FROM {course} c
+                 WHERE c.id > :after
+                       AND c.id <> :siteid
+                       AND (EXISTS (SELECT 1
+                                      FROM {course_completions} cc
+                                     WHERE cc.course = c.id
+                                           AND cc.timecompleted IS NOT NULL
+                                           AND cc.timecompleted > 0)
+                            OR EXISTS (SELECT 1
+                                         FROM {enrol} e
+                                         JOIN {user_enrolments} ue ON ue.enrolid = e.id
+                                        WHERE e.courseid = c.id
+                                              AND e.status = :enrolenabled
+                                              AND ue.status = :useractive))
+              ORDER BY c.id ASC";
+        $params = [
+            'after' => $after,
+            'siteid' => SITEID,
+            'enrolenabled' => ENROL_INSTANCE_ENABLED,
+            'useractive' => ENROL_USER_ACTIVE,
+        ];
+        $records = $DB->get_records_sql($sql, $params, 0, $limit ?: 0);
 
         return array_map('intval', array_keys($records));
     }

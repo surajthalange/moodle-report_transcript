@@ -106,11 +106,31 @@ final class archive_test extends \advanced_testcase {
     }
 
     /**
-     * An unfinished course is not a transcript line, so it is not archived either.
+     * An in-progress course IS archived.
+     *
+     * It appears on the transcript whenever includeinprogress is on, which is the default,
+     * so the line has to survive the course like any other. Before 1.1.1 only completions
+     * were kept and this line vanished when the course was deleted.
      */
-    public function test_an_incomplete_course_is_not_archived(): void {
+    public function test_an_inprogress_course_is_archived(): void {
         $course = $this->course();
         $this->getDataGenerator()->enrol_user($this->user->id, $course->id, 'student');
+
+        $this->assertTrue(archive::capture((int) $this->user->id, (int) $course->id));
+
+        $rows = $this->archived();
+        $this->assertCount(1, $rows);
+        $row = reset($rows);
+        $this->assertSame(grade_presenter::STATUS_INPROGRESS, $row->status);
+        $this->assertNull($row->timecompleted, 'an unfinished course has no completion date');
+    }
+
+    /**
+     * Without an active enrolment there is no transcript line to preserve, so nothing is
+     * archived. This is the case the old test was really describing.
+     */
+    public function test_an_incomplete_course_with_no_enrolment_is_not_archived(): void {
+        $course = $this->course();
 
         $this->assertFalse(archive::capture((int) $this->user->id, (int) $course->id));
         $this->assertSame([], $this->archived());
@@ -148,9 +168,13 @@ final class archive_test extends \advanced_testcase {
     }
 
     /**
-     * A completion that was revoked must not come back when the course is deleted.
+     * A revoked completion must not come back AS A COMPLETION when the course is deleted.
+     *
+     * The learner is still enrolled here, so once the completion is gone the live
+     * transcript shows the course as in progress, and from 1.1.1 the archive follows it.
+     * What must never happen is the completed row surviving the revocation.
      */
-    public function test_a_revoked_completion_is_forgotten(): void {
+    public function test_a_revoked_completion_is_not_archived_as_completed(): void {
         global $DB;
 
         $course = $this->course();
@@ -159,6 +183,34 @@ final class archive_test extends \advanced_testcase {
 
         // The administrator removes the completion, as the completion report allows.
         $DB->delete_records('course_completions', ['course' => $course->id, 'userid' => $this->user->id]);
+
+        delete_course($course, false);
+
+        $rows = $this->archived();
+        $this->assertCount(1, $rows, 'still enrolled, so the transcript shows it in progress');
+        $row = reset($rows);
+        $this->assertSame(grade_presenter::STATUS_INPROGRESS, $row->status);
+        $this->assertNull($row->timecompleted, 'and the completion date is gone');
+    }
+
+    /**
+     * A revoked completion for a learner since unenrolled leaves nothing behind at all.
+     *
+     * This is the case the pre-1.1.1 test was really describing: with no completion and no
+     * active enrolment there is no transcript line, so deleting the course must not
+     * resurrect one.
+     */
+    public function test_a_revoked_completion_with_no_enrolment_leaves_nothing(): void {
+        global $DB;
+
+        $course = $this->course();
+        $this->complete($course, 1700000000);
+        $this->assertCount(1, $this->archived());
+
+        $DB->delete_records('course_completions', ['course' => $course->id, 'userid' => $this->user->id]);
+
+        $instance = $DB->get_record('enrol', ['courseid' => $course->id, 'enrol' => 'manual']);
+        enrol_get_plugin('manual')->unenrol_user($instance, $this->user->id);
 
         delete_course($course, false);
 

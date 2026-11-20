@@ -98,6 +98,51 @@ final class archive_merge_test extends \advanced_testcase {
     }
 
     /**
+     * An in-progress line survives its course being deleted.
+     *
+     * This is the case Abraxas found during acceptance testing in November 2026: with
+     * includeinprogress on, which is the default, an unfinished course is a visible line on
+     * the transcript, and before 1.1.1 that line disappeared when the course was deleted.
+     */
+    public function test_an_inprogress_course_survives_deletion(): void {
+        $course = $this->getDataGenerator()->create_course([
+            'fullname' => 'Statistics 101',
+            'shortname' => 'STAT101',
+            'enablecompletion' => 1,
+        ]);
+        $courseid = (int) $course->id;
+        $this->getDataGenerator()->enrol_user($this->user->id, $courseid, 'student');
+
+        $before = $this->build()->rows;
+        $this->assertCount(1, $before, 'an unfinished course is on the transcript to begin with');
+        $this->assertSame(grade_presenter::STATUS_INPROGRESS, $before[0]->status);
+
+        delete_course($course, false);
+
+        $after = $this->build()->rows;
+        $this->assertCount(1, $after, 'and it is still there once the course is gone');
+        $this->assertSame($courseid, $after[0]->courseid);
+        $this->assertSame('Statistics 101', $after[0]->coursename);
+        $this->assertSame(grade_presenter::STATUS_INPROGRESS, $after[0]->status);
+    }
+
+    /**
+     * An archived in-progress row is hidden when the site stops listing in-progress
+     * courses, because the settings are applied when the archive is read rather than when
+     * it is written. Turning the setting back on brings the row back without a backfill.
+     */
+    public function test_an_archived_inprogress_row_follows_the_setting(): void {
+        $course = $this->getDataGenerator()->create_course(['enablecompletion' => 1]);
+        $this->getDataGenerator()->enrol_user($this->user->id, (int) $course->id, 'student');
+
+        delete_course($course, false);
+
+        $this->assertCount(1, $this->build()->rows, 'shown while the setting is on');
+        $this->assertCount(0, $this->build(['includeinprogress' => false])->rows, 'hidden when off');
+        $this->assertCount(1, $this->build()->rows, 'and back again, with no backfill');
+    }
+
+    /**
      * While a course exists it is the live data that counts.
      *
      * The archived row is deliberately left stale here. If the merge ever preferred it, or

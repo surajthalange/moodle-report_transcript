@@ -12,7 +12,9 @@ is later removed, the line stays.
 
 **It keeps:**
 
-- Every course a learner completed while this feature was installed.
+- Every course on a learner's transcript, in whatever state the transcript showed it:
+  completed, in progress, or in a course without completion tracking. Which of those your
+  transcripts list is governed by your existing settings, and the archive follows them.
 - The course name and short name as they were, the start and completion dates, the grade as
   it was shown, and the pass, fail or completed outcome.
 - Everything already captured by a downloaded PDF. Those were always safe, because each
@@ -23,11 +25,16 @@ is later removed, the line stays.
 
 - **Courses deleted before this version was installed.** Nothing can bring those back. The
   records they were built from are already gone.
-- Courses a learner started but never completed. An unfinished course was never a line on a
-  transcript, so there is nothing to preserve.
+- Courses a learner was never enrolled on, or is no longer actively enrolled on without
+  having completed them. Those are not lines on the transcript, so there is nothing to
+  preserve.
 - Courses that would not have appeared anyway. If a learner is a teacher rather than a
   student in a course, or the course sits in a category your settings exclude, it stays off
   the transcript after deletion exactly as it was before.
+
+**On your settings:** the archive stores a line whatever its state, and your settings are
+applied when a transcript is built. So if you later turn **Include in-progress courses** on
+or off, archived lines follow that change immediately and you do not need to backfill again.
 
 **Important:** while a course still exists, the live data is always used. If somebody
 corrects a grade next term, the transcript shows the corrected grade. The archived copy is
@@ -99,9 +106,24 @@ still there and the lines come back.
 
 ## The one-time backfill
 
-The plugin only sees completions from the moment it is installed. Everything that happened
-before that needs one pass to be archived. Until you run it, older completions are still at
-risk if their course is deleted.
+**A course deleted through Moodle is protected whether or not you have run the backfill.**
+Every learner in a course is captured in the moment before it is deleted, so the protection
+does not depend on the archive already holding a row. An earlier version of this document
+said otherwise, which was wrong.
+
+The backfill is a safety net rather than the main protection. It is still worth running
+once, for three reasons:
+
+- It covers a course removed by something other than Moodle's own course deletion, such as
+  a direct database change or a custom script. Nothing can capture a course on the way out
+  if the deletion never goes through Moodle.
+- It covers the period in which this plugin is disabled or uninstalled. The capture before
+  deletion cannot run if the plugin is not running.
+- It means the archive is already complete, so the capture before deletion refreshes rows
+  rather than being the only copy ever made.
+
+It is cheap, it is safe to repeat, and it needs no downtime, so the recommendation is still
+to run it once after upgrading.
 
 ### From the command line, recommended
 
@@ -141,10 +163,12 @@ command line once, because Moodle has no screen for starting an ad hoc task by h
 
 ### How long to expect
 
-The work is one pass per course that has ever recorded a completion, and within each course
-one row per learner who completed it. As a guide, a site with 500 such courses and 50,000
-completions takes roughly fifteen to forty minutes, depending on the database and the
-server. The `--dry-run` count tells you how many courses are involved before you start.
+The work is one pass per course that has either recorded a completion or has somebody
+actively enrolled, and within each course one row per learner the transcript would list. As
+a guide, a site with 500 such courses and 50,000 transcript lines takes roughly fifteen to
+forty minutes, depending on the database and the server. The `--dry-run` count tells you how
+many courses are involved before you start, and it is the number to go by rather than any
+estimate here.
 
 The backfill only reads completion and grade data and writes to its own table. It is safe to
 run on a live site, though a quiet period is kinder to the database.
@@ -206,6 +230,21 @@ the archive quietly failed would lose exactly the records this feature exists to
 Fix the reported problem and delete the course again.
 
 ## Changelog
+
+### 1.1.1
+
+- In-progress courses, and courses without completion tracking, are now archived as well as
+  completed ones, so those lines survive a course being deleted too. Previously only
+  completions were kept, on the mistaken basis that an unfinished course was never a
+  transcript line. It is, whenever the matching setting is on, and in-progress courses are
+  on by default.
+- Which states are listed is now decided when a transcript is built rather than when a row
+  is archived, so changing those settings takes effect at once and needs no new backfill.
+- The backfill now visits courses that have active enrolments as well as courses with
+  completions, so its coverage matches what the archive keeps.
+- Corrected two statements in this document: that unfinished courses were never transcript
+  lines, and that completions were at risk until the backfill had run. Both were wrong.
+  Thanks to the team at Abraxas for catching them during acceptance testing.
 
 ### 1.1.0
 

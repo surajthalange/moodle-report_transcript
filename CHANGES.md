@@ -1,5 +1,28 @@
 # Changes
 
+## 1.1.1 (2026-11-21)
+
+Archive every transcript line, not only completed courses.
+
+- In-progress courses appear on transcripts whenever `includeinprogress` is on, which is
+  the default, and courses without completion tracking appear when `includeuntracked` is
+  on. Neither was archived, so such a line vanished when its course was deleted. Both are
+  archived now. Found by the client during acceptance testing; the premise in the 1.1.0
+  code comment and documentation, that an unfinished course was never a transcript line,
+  was simply false.
+- Which statuses are listed is applied when the archive is read, not when it is written, so
+  turning `includeinprogress` or `includeuntracked` on or off takes effect immediately and
+  never calls for a second backfill.
+- The pre-deletion sweep now considers everyone with an active enrolment as well as everyone
+  with a completion, and drops archived rows for anyone who no longer earns a transcript
+  line, which now includes a learner unenrolled from a course they had not completed.
+- `backfill::course_ids()` selects courses with an active enrolment as well as courses with
+  a completion, so the backfill covers what the archive keeps.
+- Documentation corrected on two counts: unfinished courses were described as never being
+  transcript lines, and the backfill was described as the thing protecting existing
+  completions. The capture before deletion is what protects them, and it does not depend on
+  the backfill having run.
+
 ## 1.1.0 (2026-11-12)
 
 The transcript archive: completed courses stay on a transcript after the course is deleted.
