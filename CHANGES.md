@@ -1,5 +1,18 @@
 # Changes
 
+## 1.1.2 (2026-11-21)
+
+- Declare the archive table's text columns with no default rather than an empty string.
+  XMLDB rejects an empty string as the default of a CHAR NOT NULL column, rewrites it to
+  none and emits a debugging message while doing so. The resulting column was always
+  correct, which is why the table installed cleanly everywhere, but Moodle plugin CI fails
+  any job that produces a debugging message during install, so every CI job failed the
+  first time this table reached it. Five columns in `db/install.xml` and the same five in
+  `db/upgrade.php`.
+- No schema change for sites already running 1.1.0 or 1.1.1: their columns were created
+  with no default, because XMLDB had already corrected it. This only makes the declaration
+  say what the database always did.
+
 ## 1.1.1 (2026-11-21)
 
 Archive every transcript line, not only completed courses.
