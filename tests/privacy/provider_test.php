@@ -182,10 +182,26 @@ final class provider_test extends provider_testcase {
         $this->assertSame(1, $DB->count_records(archive::TABLE, ['userid' => $this->learner->id]), 'Archive still there');
 
         provider::delete_data_for_user(new approved_contextlist($this->learner, 'report_transcript', [$learnerctx->id]));
-        $this->assertSame(0, $DB->count_records(issuer::TABLE, ['userid' => $this->learner->id]));
-        $this->assertSame(1, $DB->count_records(issuer::TABLE, ['userid' => $this->other->id]), 'Unrelated learner untouched');
-        $this->assertSame(0, $DB->count_records(archive::TABLE, ['userid' => $this->learner->id]), 'Archive erased too');
-        $this->assertSame(1, $DB->count_records(archive::TABLE, ['userid' => $this->other->id]), 'Unrelated archive untouched');
+        $this->assert_only_the_learner_was_erased();
+    }
+
+    /**
+     * Assert that the learner's rows are gone from both tables and that an unrelated
+     * learner's rows are untouched.
+     *
+     * The same four assertions follow every deletion path, so they live here: a deletion
+     * that erased too much, or too little, looks identical in each test otherwise.
+     */
+    private function assert_only_the_learner_was_erased(): void {
+        global $DB;
+
+        $erased = $this->learner->id;
+        $untouched = $this->other->id;
+
+        $this->assertSame(0, $DB->count_records(issuer::TABLE, ['userid' => $erased]), 'issues erased');
+        $this->assertSame(1, $DB->count_records(issuer::TABLE, ['userid' => $untouched]), 'other issues kept');
+        $this->assertSame(0, $DB->count_records(archive::TABLE, ['userid' => $erased]), 'archive erased');
+        $this->assertSame(1, $DB->count_records(archive::TABLE, ['userid' => $untouched]), 'other archive kept');
     }
 
     /**
@@ -196,10 +212,7 @@ final class provider_test extends provider_testcase {
 
         provider::delete_data_for_all_users_in_context(context_user::instance($this->learner->id));
 
-        $this->assertSame(0, $DB->count_records(issuer::TABLE, ['userid' => $this->learner->id]));
-        $this->assertSame(1, $DB->count_records(issuer::TABLE, ['userid' => $this->other->id]));
-        $this->assertSame(0, $DB->count_records(archive::TABLE, ['userid' => $this->learner->id]));
-        $this->assertSame(1, $DB->count_records(archive::TABLE, ['userid' => $this->other->id]));
+        $this->assert_only_the_learner_was_erased();
     }
 
     /**
@@ -215,10 +228,7 @@ final class provider_test extends provider_testcase {
         $this->assertSame(1, $DB->count_records(issuer::TABLE, ['userid' => $this->learner->id, 'issuerid' => 0]));
 
         provider::delete_data_for_users(new approved_userlist($learnerctx, 'report_transcript', [(int) $this->learner->id]));
-        $this->assertSame(0, $DB->count_records(issuer::TABLE, ['userid' => $this->learner->id]));
-        $this->assertSame(1, $DB->count_records(issuer::TABLE, ['userid' => $this->other->id]));
-        $this->assertSame(0, $DB->count_records(archive::TABLE, ['userid' => $this->learner->id]));
-        $this->assertSame(1, $DB->count_records(archive::TABLE, ['userid' => $this->other->id]));
+        $this->assert_only_the_learner_was_erased();
     }
 
     /**

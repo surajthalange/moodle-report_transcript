@@ -1,5 +1,13 @@
 # Changes
 
+## 1.1.3 (2026-11-21)
+
+- Describe `rows_for()` and `is_excluded()` with a plain `array` parameter type. Moodle's
+  PHPDoc checker cannot parse the `array<int, true>` generic and reports the parameter
+  list as incomplete, which fails CI.
+- Give the three privacy deletion tests one named assertion helper instead of repeating
+  the same four assertions, which the copy and paste detector counts as a clone.
+
 ## 1.1.2 (2026-11-21)
 
 - Declare the archive table's text columns with no default rather than an empty string.

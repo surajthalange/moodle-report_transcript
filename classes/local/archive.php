@@ -173,7 +173,8 @@ final class archive {
      * ends up on the page or is filtered out of it.
      *
      * @param int $userid
-     * @param array<int, true> $excludedcategories category ids the settings exclude
+     * @param array $excludedcategories category ids the settings exclude, keyed by id
+     * @param settings|null $settings the settings to apply; the site's own when omitted
      * @return transcript_row[]
      */
     public static function rows_for(
@@ -312,7 +313,7 @@ final class archive {
      * has to keep excluding.
      *
      * @param stdClass $record
-     * @param array<int, true> $excludedcategories
+     * @param array $excludedcategories category ids the settings exclude, keyed by id
      * @return bool
      */
     private static function is_excluded(stdClass $record, array $excludedcategories): bool {
