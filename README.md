@@ -152,6 +152,15 @@ course. This plugin is a fresh implementation; no source is copied from any of t
 Bug reports are most useful with the Moodle version, the PHP version, the database engine,
 and whether debugging was on.
 
+## Custom development
+
+Need changes to this plugin, or something built for your own platform? I am Suraj
+Thalange, a technical project manager and developer. My team builds Moodle plugins, themes,
+upgrades and integrations, and custom software such as web portals, business applications
+and APIs in Laravel and PHP.
+
+Contact: surajthalange18@gmail.com · <https://surajthalange.github.io/>
+
 ## Licence
 
 GNU General Public License v3 or later. The full text ships in [COPYING.txt](COPYING.txt),
